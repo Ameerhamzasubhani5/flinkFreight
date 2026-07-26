@@ -40,6 +40,20 @@ export type Service = {
 };
 
 export const services: Service[] = [
+    {
+    slug: "ground-transportation",
+    title: "Ground Transportation",
+    short: "Expedited U.S.–Mexico and cross-border ground transport.",
+    description:
+      "We specialize in expedited freight with U.S.–Mexico ground transport, ensuring shipments arrive safely and on time. From full truckload to less-than-truckload, our network and technology keep your cargo moving.",
+    icon: "truck",
+    highlights: [
+      "FTL & LTL nationwide",
+      "U.S.–Mexico cross-border expertise",
+      "Real-time tracking",
+      "Dedicated & expedited options",
+    ],
+  },
   {
     slug: "ocean-freight",
     title: "Ocean Freight",
@@ -66,20 +80,6 @@ export const services: Service[] = [
       "Temperature-sensitive handling",
       "Aerospace & medical specialists",
       "Global airport coverage",
-    ],
-  },
-  {
-    slug: "ground-transportation",
-    title: "Ground Transportation",
-    short: "Expedited U.S.–Mexico and cross-border ground transport.",
-    description:
-      "We specialize in expedited freight with U.S.–Mexico ground transport, ensuring shipments arrive safely and on time. From full truckload to less-than-truckload, our network and technology keep your cargo moving.",
-    icon: "truck",
-    highlights: [
-      "FTL & LTL nationwide",
-      "U.S.–Mexico cross-border expertise",
-      "Real-time tracking",
-      "Dedicated & expedited options",
     ],
   },
   {

@@ -1,12 +1,15 @@
-import Counter from "@/components/motion/Counter";
 import { Stagger, StaggerItem } from "@/components/motion/Stagger";
 import { cn } from "@/lib/utils";
 
 type Stat = { value: string; label: string };
 
 /**
- * StatGrid — reusable animated statistics grid. `variant` switches between the
+ * StatGrid — reusable statistics grid. `variant` switches between the
  * translucent style used on dark hero backgrounds and a light card style.
+ *
+ * Values render as-is rather than counting up: a count-up left the headline
+ * figures showing truncated intermediate numbers ("150+" reading as "7+"),
+ * which looked like a data error. The cards still animate in via Stagger.
  */
 export default function StatGrid({
   stats,
@@ -31,11 +34,11 @@ export default function StatGrid({
           >
             <p
               className={cn(
-                "text-3xl font-extrabold md:text-4xl",
+                "text-3xl font-extrabold tabular-nums md:text-4xl",
                 variant === "glass" ? "text-accent" : "text-primary"
               )}
             >
-              <Counter value={s.value} />
+              {s.value}
             </p>
             <p
               className={cn(

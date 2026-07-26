@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { MapPin, Mail, Phone } from "lucide-react";
 
 import { company } from "@/lib/site";
@@ -7,8 +8,17 @@ import { useApp } from "@/contexts/AppContext";
 import PageHero from "@/components/PageHero";
 import { Card, CardContent } from "@/components/ui/card";
 import Reveal from "@/components/motion/Reveal";
+import SectionHeading from "@/components/shared/SectionHeading";
 import { Stagger, StaggerItem } from "@/components/motion/Stagger";
 import ContactForm from "@/components/ContactForm";
+
+// Client-only: react-simple-maps' zoom behaviour needs `document`.
+const OfficeMap = dynamic(() => import("@/components/OfficeMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="aspect-[900/520] w-full animate-pulse rounded-2xl border border-border bg-[#0b1a2e]" />
+  ),
+});
 
 const detailIcons = [MapPin, Mail, Phone] as const;
 
@@ -58,6 +68,7 @@ export default function ContactContent() {
 
       <section className="section">
         <div className="container grid gap-12 lg:grid-cols-2">
+          <div className="flex flex-col justify-center">
           <Reveal direction="right">
             <p className="eyebrow">{co.eyebrow}</p>
             <h2 className="mt-3 text-3xl font-bold md:text-4xl">{co.sectionTitle}</h2>
@@ -77,8 +88,15 @@ export default function ContactContent() {
                   </div>
                 </StaggerItem>
               ))}
+              
             </Stagger>
           </Reveal>
+
+          {/* <Reveal className="mt-12">
+            <OfficeMap />
+          </Reveal> */}
+
+          </div>
 
           <Reveal direction="left" delay={0.1}>
             <Card>
@@ -90,6 +108,20 @@ export default function ContactContent() {
                 </div>
               </CardContent>
             </Card>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Global office map */}
+      <section className="section bg-secondary/40">
+        <div className="container">
+          <SectionHeading
+            eyebrow={co.mapEyebrow}
+            title={co.mapTitle}
+            description={co.mapSubtitle}
+          />
+          <Reveal className="mt-12">
+            <OfficeMap />
           </Reveal>
         </div>
       </section>

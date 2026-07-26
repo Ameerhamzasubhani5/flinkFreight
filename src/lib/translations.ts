@@ -132,6 +132,10 @@ const de = {
     phone: "Telefon",
     formTitle: "Nachricht senden",
     formNote: "Mit * gekennzeichnete Felder sind Pflichtfelder.",
+    mapEyebrow: "Globale Präsenz",
+    mapTitle: "Unsere Standorte weltweit",
+    mapSubtitle:
+      "Vier Büros auf drei Kontinenten halten Ihre Fracht rund um die Uhr in Bewegung.",
   },
 
   contactForm: {
@@ -163,7 +167,7 @@ const de = {
     tagline:
       "{tagline} Ein umfassender Ansatz für globale Logistik mit über {years} Jahren Erfahrung.",
     copyright: "© {year} {name}. Alle Rechte vorbehalten.",
-    builtWith: "Erstellt mit Next.js & shadcn/ui · Demo-Klon zu Bildungszwecken.",
+    builtWith: "Erstellt mit Next.js & shadcn/ui.",
   },
 
   faq: {
@@ -221,6 +225,20 @@ const de = {
   ],
 
   servicesList: [
+        {
+      slug: "ground-transportation",
+      icon: "truck",
+      title: "Landtransport",
+      short: "Expresser US-Mexiko- und grenzüberschreitender Landtransport.",
+      description:
+        "Wir sind spezialisiert auf Expressfracht mit US-Mexiko-Landtransport und gewährleisten, dass Sendungen sicher und pünktlich ankommen. Von Komplett- bis Teilladungen hält unser Netzwerk und unsere Technologie Ihre Fracht in Bewegung.",
+      highlights: [
+        "FTL & LTL landesweit",
+        "US-Mexiko-Grenzverkehrs-Expertise",
+        "Echtzeit-Tracking",
+        "Dedizierte & Expressoptionen",
+      ],
+    },
     {
       slug: "ocean-freight",
       icon: "ship",
@@ -247,20 +265,6 @@ const de = {
         "Temperaturempfindliche Handhabung",
         "Luft- und Medizinspezialisten",
         "Globale Flughafenabdeckung",
-      ],
-    },
-    {
-      slug: "ground-transportation",
-      icon: "truck",
-      title: "Landtransport",
-      short: "Expresser US-Mexiko- und grenzüberschreitender Landtransport.",
-      description:
-        "Wir sind spezialisiert auf Expressfracht mit US-Mexiko-Landtransport und gewährleisten, dass Sendungen sicher und pünktlich ankommen. Von Komplett- bis Teilladungen hält unser Netzwerk und unsere Technologie Ihre Fracht in Bewegung.",
-      highlights: [
-        "FTL & LTL landesweit",
-        "US-Mexiko-Grenzverkehrs-Expertise",
-        "Echtzeit-Tracking",
-        "Dedizierte & Expressoptionen",
       ],
     },
     {
@@ -467,6 +471,10 @@ const en: typeof de = {
     phone: "Phone",
     formTitle: "Send us a message",
     formNote: "Fields marked with * are required.",
+    mapEyebrow: "Global Presence",
+    mapTitle: "Our offices around the world",
+    mapSubtitle:
+      "Four offices across three continents keeping your freight moving around the clock.",
   },
 
   contactForm: {
@@ -497,7 +505,7 @@ const en: typeof de = {
     getInTouch: "Get in Touch",
     tagline: "{tagline} A full-service approach to global logistics with over {years} years of experience.",
     copyright: "© {year} {name}. All rights reserved.",
-    builtWith: "Built with Next.js & shadcn/ui · Demo clone for educational purposes.",
+    builtWith: "Built with Next.js & shadcn/ui.",
   },
 
   faq: {
@@ -555,6 +563,20 @@ const en: typeof de = {
   ],
 
   servicesList: [
+        {
+      slug: "ground-transportation",
+      icon: "truck",
+      title: "Ground Transportation",
+      short: "Expedited U.S.–Mexico and cross-border ground transport.",
+      description:
+        "We specialize in expedited freight with U.S.–Mexico ground transport, ensuring shipments arrive safely and on time. From full truckload to less-than-truckload, our network and technology keep your cargo moving.",
+      highlights: [
+        "FTL & LTL nationwide",
+        "U.S.–Mexico cross-border expertise",
+        "Real-time tracking",
+        "Dedicated & expedited options",
+      ],
+    },
     {
       slug: "ocean-freight",
       icon: "ship",
@@ -581,20 +603,6 @@ const en: typeof de = {
         "Temperature-sensitive handling",
         "Aerospace & medical specialists",
         "Global airport coverage",
-      ],
-    },
-    {
-      slug: "ground-transportation",
-      icon: "truck",
-      title: "Ground Transportation",
-      short: "Expedited U.S.–Mexico and cross-border ground transport.",
-      description:
-        "We specialize in expedited freight with U.S.–Mexico ground transport, ensuring shipments arrive safely and on time. From full truckload to less-than-truckload, our network and technology keep your cargo moving.",
-      highlights: [
-        "FTL & LTL nationwide",
-        "U.S.–Mexico cross-border expertise",
-        "Real-time tracking",
-        "Dedicated & expedited options",
       ],
     },
     {
