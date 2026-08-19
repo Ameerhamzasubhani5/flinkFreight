@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sheet";
 import Logo from "@/components/shared/Logo";
 
-const NAV_KEYS = ["home", "aboutUs", "services", "carriers", "contact"] as const;
+const NAV_KEYS = ["home", "aboutUs", "services", "carriers", "career", "contact"] as const;
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -65,7 +65,7 @@ export default function Navbar() {
       )}
     >
       <div className="container flex h-20 items-center justify-between">
-        <Logo />
+        <Logo variant={scrolled ? "icon" : "full"} />
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-6 md:flex">

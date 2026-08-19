@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Globe, Network } from "lucide-react";
-
+import Image from "next/image";
 import { company } from "@/lib/site";
 import { useApp } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,6 @@ export default function AboutContent() {
       <PageHero
         title={ab.heroTitle}
         subtitle={ab.heroSubtitle}
-        crumbs={[{ label: ab.crumb, href: "/about-us" }]}
       />
 
       <section className="section">

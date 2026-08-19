@@ -8,24 +8,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/contexts/AppContext";
-import { MAX_UPLOAD_BYTES, IMAGE_MIME_TYPES, IMAGE_ACCEPT } from "@/lib/uploads";
+import { MAX_UPLOAD_BYTES, RESUME_MIME_TYPES, RESUME_ACCEPT } from "@/lib/uploads";
 
 const initial = {
   name: "",
   email: "",
   phone: "",
-  subject: "",
+  position: "",
   message: "",
-  length: "",
-  width: "",
-  height: "",
-  weight: "",
 };
 
-export default function ContactForm() {
+export default function CareerForm() {
   const { t } = useApp();
+  const cf = t.careerForm;
+
   const [form, setForm] = useState(initial);
-  const [image, setImage] = useState<File | null>(null);
+  const [resume, setResume] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -33,10 +31,10 @@ export default function ContactForm() {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  function onImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function onResumeChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
     if (!file) {
-      setImage(null);
+      setResume(null);
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
@@ -45,7 +43,7 @@ export default function ContactForm() {
       e.target.value = "";
       return;
     }
-    if (!IMAGE_MIME_TYPES.includes(file.type)) {
+    if (!RESUME_MIME_TYPES.includes(file.type)) {
       setStatus("error");
       setMessage(cf.invalidFileType);
       e.target.value = "";
@@ -53,40 +51,43 @@ export default function ContactForm() {
     }
     setStatus("idle");
     setMessage("");
-    setImage(file);
+    setResume(file);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!resume) {
+      setStatus("error");
+      setMessage(cf.resumeRequired);
+      return;
+    }
     setStatus("loading");
     setMessage("");
     try {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
-      if (image) body.append("image", image);
+      body.append("resume", resume);
 
-      const res = await fetch("/api/contact", { method: "POST", body });
+      const res = await fetch("/api/career", { method: "POST", body });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send message");
+      if (!res.ok) throw new Error(data.error || "Failed to submit application");
       setStatus("ok");
       setMessage(data.message);
       setForm(initial);
-      setImage(null);
+      setResume(null);
     } catch (err) {
       setStatus("error");
       setMessage(err instanceof Error ? err.message : "Something went wrong");
     }
   }
 
-  const cf = t.contactForm;
-
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="name">{cf.nameLbl}</Label>
+          <Label htmlFor="career-name">{cf.nameLbl}</Label>
           <Input
-            id="name"
+            id="career-name"
             name="name"
             required
             value={form.name}
@@ -95,9 +96,9 @@ export default function ContactForm() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">{cf.emailLbl}</Label>
+          <Label htmlFor="career-email">{cf.emailLbl}</Label>
           <Input
-            id="email"
+            id="career-email"
             name="email"
             type="email"
             required
@@ -107,9 +108,9 @@ export default function ContactForm() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="phone">{cf.phoneLbl}</Label>
+          <Label htmlFor="career-phone">{cf.phoneLbl}</Label>
           <Input
-            id="phone"
+            id="career-phone"
             name="phone"
             value={form.phone}
             onChange={update}
@@ -117,22 +118,22 @@ export default function ContactForm() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="subject">{cf.subjectLbl}</Label>
+          <Label htmlFor="career-position">{cf.positionLbl}</Label>
           <Input
-            id="subject"
-            name="subject"
-            value={form.subject}
+            id="career-position"
+            name="position"
+            value={form.position}
             onChange={update}
-            placeholder={cf.subjectPlh}
+            placeholder={cf.positionPlh}
           />
         </div>
       </div>
+
       <div className="space-y-2">
-        <Label htmlFor="message">{cf.messageLbl}</Label>
+        <Label htmlFor="career-message">{cf.messageLbl}</Label>
         <Textarea
-          id="message"
+          id="career-message"
           name="message"
-          required
           rows={5}
           value={form.message}
           onChange={update}
@@ -140,80 +141,15 @@ export default function ContactForm() {
         />
       </div>
 
-      <div className="space-y-3 rounded-lg border border-border p-4">
-        <div>
-          <p className="text-sm font-semibold">{cf.dimensionsTitle}</p>
-          <p className="text-xs text-muted-foreground">{cf.dimensionsHint}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="space-y-2">
-            <Label htmlFor="length">{cf.lengthLbl}</Label>
-            <Input
-              id="length"
-              name="length"
-              type="number"
-              min="0"
-              step="0.1"
-              inputMode="decimal"
-              value={form.length}
-              onChange={update}
-              placeholder={cf.lengthPlh}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="width">{cf.widthLbl}</Label>
-            <Input
-              id="width"
-              name="width"
-              type="number"
-              min="0"
-              step="0.1"
-              inputMode="decimal"
-              value={form.width}
-              onChange={update}
-              placeholder={cf.widthPlh}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="height">{cf.heightLbl}</Label>
-            <Input
-              id="height"
-              name="height"
-              type="number"
-              min="0"
-              step="0.1"
-              inputMode="decimal"
-              value={form.height}
-              onChange={update}
-              placeholder={cf.heightPlh}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="weight">{cf.weightLbl}</Label>
-            <Input
-              id="weight"
-              name="weight"
-              type="number"
-              min="0"
-              step="0.1"
-              inputMode="decimal"
-              value={form.weight}
-              onChange={update}
-              placeholder={cf.weightPlh}
-            />
-          </div>
-        </div>
-      </div>
-
       <div className="space-y-2">
-        <Label htmlFor="image">{cf.imageLbl}</Label>
-        {image ? (
+        <Label htmlFor="resume">{cf.resumeLbl}</Label>
+        {resume ? (
           <div className="flex items-center justify-between rounded-md border border-input px-4 py-2.5 text-sm">
-            <span className="truncate">{image.name}</span>
+            <span className="truncate">{resume.name}</span>
             <button
               type="button"
-              onClick={() => setImage(null)}
-              aria-label="Remove image"
+              onClick={() => setResume(null)}
+              aria-label="Remove resume"
               className="ml-3 shrink-0 text-muted-foreground hover:text-destructive"
             >
               <X className="h-4 w-4" />
@@ -221,22 +157,23 @@ export default function ContactForm() {
           </div>
         ) : (
           <label
-            htmlFor="image"
+            htmlFor="resume"
             className="flex h-11 w-full cursor-pointer items-center gap-2 rounded-md border border-dashed border-input px-4 text-sm text-muted-foreground hover:border-primary hover:text-primary"
           >
             <Upload className="h-4 w-4" />
-            {cf.imageLbl}
+            {cf.resumeLbl}
           </label>
         )}
         <input
-          id="image"
-          name="image"
+          id="resume"
+          name="resume"
           type="file"
-          accept={IMAGE_ACCEPT}
-          onChange={onImageChange}
+          required
+          accept={RESUME_ACCEPT}
+          onChange={onResumeChange}
           className="sr-only"
         />
-        <p className="text-xs text-muted-foreground">{cf.imageHint}</p>
+        <p className="text-xs text-muted-foreground">{cf.resumeHint}</p>
       </div>
 
       <Button

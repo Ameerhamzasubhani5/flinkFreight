@@ -63,7 +63,6 @@ export default function ContactContent() {
       <PageHero
         title={co.heroTitle}
         subtitle={co.heroSubtitle}
-        crumbs={[{ label: co.crumb, href: "/contact" }]}
       />
 
       <section className="section">

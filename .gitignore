@@ -22,13 +22,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
+# local env files — never commit real credentials.
+# .env.local.example is committed as the template.
 .env
+.env*.local
 
-# unused image not included in the site
-public/logistic.png
+# vercel
+.vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local tooling / agent scratch output — not part of the app
+.gstack/
+.claude/
+graphify-out/

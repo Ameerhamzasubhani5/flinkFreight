@@ -39,9 +39,9 @@ export const metadata: Metadata = {
   },
   description: company.description,
   icons: {
-    icon: "/logo-head.png",
-    shortcut: "/logo-head.png",
-    apple: "/logo-head.png",
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 };
 

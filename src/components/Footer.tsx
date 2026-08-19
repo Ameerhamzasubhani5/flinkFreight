@@ -26,7 +26,7 @@ const socials = [
   },
 ];
 
-const NAV_KEYS = ["home", "aboutUs", "services", "carriers", "contact"] as const;
+const NAV_KEYS = ["home", "aboutUs", "services", "carriers", "career", "contact"] as const;
 
 export default function Footer() {
   const { t } = useApp();
@@ -132,13 +132,12 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="container flex flex-col items-center justify-between gap-3 py-6 text-xs text-slate-400 sm:flex-row">
+        <div className="flex flex-row items-center justify-center gap-3 py-6 text-xs text-slate-400 sm:flex-row">
           <p>
             {t.footer.copyright
               .replace("{year}", String(new Date().getFullYear()))
               .replace("{name}", company.name)}
           </p>
-          <p>{t.footer.builtWith}</p>
         </div>
       </div>
     </footer>

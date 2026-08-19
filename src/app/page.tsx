@@ -33,9 +33,9 @@ export default function HomePage() {
     <>
       {/* Hero — photo background, always dark regardless of site theme */}
       <section className="relative overflow-hidden bg-[#0b1a2e] text-white">
-        {/* Background photo — logi.png (no visible brand marks) */}
+        {/* Background photo — no visible brand marks */}
         <Image
-          src="/logi.png"
+          src="/hero-port.jpg"
           alt=""
           fill
           priority

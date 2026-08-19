@@ -3,18 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { geoMercator } from "d3-geo";
 import { motion } from "framer-motion";
-import {
-  ComposableMap,
-  Geographies,
-  Geography,
-  Marker,
-  ZoomableGroup,
-} from "react-simple-maps";
+import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 
 import { cn } from "@/lib/utils";
 
 /**
- * OfficeMap — world map with the four Flink Freight offices.
+ * OfficeMap — static (non-zoomable) map framed on the regions Flink Freight
+ * operates in, with the four office countries highlighted.
  *
  * Coordinates are stored as [longitude, latitude] because that is the order
  * d3-geo (and therefore react-simple-maps) expects — the reverse of how
@@ -29,8 +24,10 @@ import { cn } from "@/lib/utils";
 
 const WIDTH = 900;
 const HEIGHT = 520;
-const SCALE = 145;
-const CENTER: [number, number] = [10, 25];
+// Tighter than a whole-world fit (~145) — frames North America through South
+// Asia/Middle East, where every office sits, instead of the full globe.
+const SCALE = 230;
+const CENTER: [number, number] = [-3, 36];
 
 const MAP_PROJECTION = geoMercator()
   .scale(SCALE)
@@ -51,20 +48,46 @@ const OFFICES: Office[] = [
   { id: "ae", city: "Dubai", country: "UAE", coordinates: [55.2708, 25.2048] },
 ];
 
+// Countries highlighted on the map, grouped by the broader region each office
+// serves (EU, North America, Asia, the Gulf) rather than just the single
+// country its city sits in. Names match world-110m.json's geo.properties.name
+// exactly — some very small states (Malta, Bahrain, Singapore) aren't present
+// in this 110m-resolution dataset at all, so they're omitted here too.
+const EU_COUNTRIES = [
+  "Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czechia", "Denmark",
+  "Estonia", "Finland", "France", "Germany", "Greece", "Hungary", "Ireland",
+  "Italy", "Latvia", "Lithuania", "Luxembourg", "Netherlands", "Poland",
+  "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Sweden", "Turkey",
+];
+const NORTH_AMERICA_COUNTRIES = ["United States of America", "Canada"];
+const ASIA_COUNTRIES = [
+  "Azerbaijan", "Bangladesh", "Bhutan", "Brunei", "China", "India",
+  "Indonesia", "Iran", "Iraq", "Japan", "Malaysia", "Nepal", "Pakistan",
+  "South Korea", "Taiwan",
+];
+const GULF_COUNTRIES = ["Kuwait", "Oman", "Qatar", "Saudi Arabia", "United Arab Emirates"];
+
+const OPERATING_COUNTRIES = new Set([
+  ...EU_COUNTRIES,
+  ...NORTH_AMERICA_COUNTRIES,
+  ...ASIA_COUNTRIES,
+  ...GULF_COUNTRIES,
+]);
+
 // Routes drawn between offices, as pairs of indices into OFFICES.
 const ROUTES: [number, number][] = [
   [0, 1], // Toronto  → Berlin
   [0, 2],
   [0, 3],
-  [1, 0], 
+  [1, 0],
   [1, 2],
   [1, 3],
   [2, 0],
   [2, 1],
   [2, 3],
-  [3, 0], 
+  [3, 0],
   [3, 1],
-  [3, 2], 
+  [3, 2],
 ];
 
 /**
@@ -92,9 +115,6 @@ function project(coordinates: [number, number]): [number, number] {
 }
 
 export default function OfficeMap() {
-  // Tracked so marker glyphs can be counter-scaled and keep a constant
-  // on-screen size while the user zooms.
-  const [zoom, setZoom] = useState(1);
   const [active, setActive] = useState<string | null>(null);
 
   // The SVG viewBox is downscaled to fit the container, which would shrink pins
@@ -113,9 +133,9 @@ export default function OfficeMap() {
     return () => ro.disconnect();
   }, []);
 
-  // Combined counter-scale: undo both the responsive downscale and the zoom.
-  // Clamped so glyphs never balloon past a sensible share of the map.
-  const glyph = Math.min(1 / (zoom * Math.max(renderScale, 0.2)), 2.4);
+  // Counter-scale undoes the responsive downscale so glyphs stay a fixed,
+  // readable size at any container width. Clamped so they never balloon.
+  const glyph = Math.min(1 / Math.max(renderScale, 0.2), 2.4);
   // Below this width the labels collide, so they become tap-to-reveal only.
   const showLabels = renderScale > 0.72;
 
@@ -129,164 +149,167 @@ export default function OfficeMap() {
         // viewBox scaling handles responsiveness; height auto preserves ratio.
         style={{ width: "100%", height: "auto", display: "block" }}
       >
-        <ZoomableGroup
-          center={CENTER}
-          zoom={1}
-          minZoom={1}
-          maxZoom={5}
-          onMoveEnd={({ zoom: z }) => setZoom(z)}
-        >
-          <Geographies geography="/world-110m.json">
-            {({ geographies }) =>
-              geographies.map((geo) => (
+        <Geographies geography="/world-110m.json">
+          {({ geographies }) =>
+            geographies.map((geo) => {
+              const isOperating = OPERATING_COUNTRIES.has(geo.properties.name);
+              return (
                 <Geography
                   key={geo.rsmKey}
                   geography={geo}
-                  fill="#16324f"
-                  stroke="#24476b"
-                  strokeWidth={0.4}
+                  fill={isOperating ? "rgba(255,220,57,0.22)" : "#16324f"}
+                  stroke={isOperating ? "#FFDC39" : "#24476b"}
+                  strokeWidth={isOperating ? 1 : 0.4}
                   style={{
                     default: { outline: "none" },
-                    hover: { fill: "#1d4066", outline: "none" },
+                    hover: {
+                      fill: isOperating ? "rgba(255,220,57,0.32)" : "#1d4066",
+                      outline: "none",
+                    },
                     pressed: { outline: "none" },
                   }}
                 />
-              ))
-            }
-          </Geographies>
-
-          {/* Animated route curves, drawn under the pins */}
-          <g fill="none" stroke="#FFDC39" strokeLinecap="round">
-            {ROUTES.map(([from, to], i) => {
-              const d = curvePath(
-                project(OFFICES[from].coordinates),
-                project(OFFICES[to].coordinates)
               );
-              return (
-                <g key={`${OFFICES[from].id}-${OFFICES[to].id}`}>
-                  {/* Faint full path so the route reads even before it draws */}
-                  <path d={d} strokeWidth={0.8 * glyph} opacity={0.18} />
-                  {/* Draw-on animation */}
-                  <motion.path
-                    d={d}
-                    strokeWidth={1.4 * glyph}
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 0.85 }}
-                    transition={{
-                      duration: 1.6,
-                      delay: 0.4 + i * 0.25,
-                      ease: "easeInOut",
-                    }}
-                  />
-                  {/* Pulse travelling along the route (SMIL — no JS per frame) */}
-                  <circle r={2.4 * glyph} fill="#FFDC39" opacity={0}>
-                    <animateMotion
-                      dur="3s"
-                      begin={`${1.2 + i * 0.4}s`}
-                      repeatCount="indefinite"
-                      path={d}
-                      calcMode="spline"
-                      keyTimes="0;1"
-                      keySplines="0.4 0 0.6 1"
-                    />
-                    <animate
-                      attributeName="opacity"
-                      values="0;1;1;0"
-                      keyTimes="0;0.15;0.85;1"
-                      dur="3s"
-                      begin={`${1.2 + i * 0.4}s`}
-                      repeatCount="indefinite"
-                    />
-                  </circle>
-                </g>
-              );
-            })}
-          </g>
+            })
+          }
+        </Geographies>
 
-          {/* Office pins — positioned by geographic coordinates */}
-          {OFFICES.map((office, i) => {
-            const isActive = active === office.id;
-            // Counter-scale keeps pins a fixed on-screen size at any zoom/width.
-            const s = glyph;
+        {/* Animated route curves, drawn under the pins */}
+        <g fill="none" stroke="#FFDC39" strokeLinecap="round">
+          {ROUTES.map(([from, to], i) => {
+            const d = curvePath(
+              project(OFFICES[from].coordinates),
+              project(OFFICES[to].coordinates)
+            );
             return (
-              <Marker
-                key={office.id}
-                coordinates={office.coordinates}
-                onMouseEnter={() => setActive(office.id)}
-                onMouseLeave={() => setActive(null)}
-                onClick={() => setActive(isActive ? null : office.id)}
-              >
-                <motion.g
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
+              <g key={`${OFFICES[from].id}-${OFFICES[to].id}`}>
+                {/* Faint full path so the route reads even before it draws */}
+                <path d={d} strokeWidth={0.8 * glyph} opacity={0.18} />
+                {/* Draw-on animation */}
+                <motion.path
+                  d={d}
+                  strokeWidth={1.4 * glyph}
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 0.85 }}
                   transition={{
-                    duration: 0.45,
-                    delay: 0.3 + i * 0.15,
-                    ease: [0.22, 1, 0.36, 1],
+                    duration: 1.6,
+                    delay: 0.4 + i * 0.25,
+                    ease: "easeInOut",
                   }}
-                  style={{ cursor: "pointer" }}
-                >
-                  {/* Radiating halo */}
-                  <motion.circle
-                    r={4 * s}
-                    fill="#FFDC39"
-                    animate={{ r: [4 * s, 11 * s], opacity: [0.5, 0] }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      delay: i * 0.35,
-                      ease: "easeOut",
-                    }}
+                />
+                {/* Pulse travelling along the route (SMIL — no JS per frame) */}
+                <circle r={2.4 * glyph} fill="#FFDC39" opacity={0}>
+                  <animateMotion
+                    dur="3s"
+                    begin={`${1.2 + i * 0.4}s`}
+                    repeatCount="indefinite"
+                    path={d}
+                    calcMode="spline"
+                    keyTimes="0;1"
+                    keySplines="0.4 0 0.6 1"
                   />
-                  <circle
-                    r={5 * s}
-                    fill="#FFDC39"
-                    stroke="#0b1a2e"
-                    strokeWidth={1.5 * s}
+                  <animate
+                    attributeName="opacity"
+                    values="0;1;1;0"
+                    keyTimes="0;0.15;0.85;1"
+                    dur="3s"
+                    begin={`${1.2 + i * 0.4}s`}
+                    repeatCount="indefinite"
                   />
-                  <circle r={1.8 * s} fill="#0b1a2e" />
-
-                  {/* Label — counter-scaled; hidden when too narrow to fit,
-                      where tapping a pin reveals it instead. */}
-                  {(showLabels || isActive) && (
-                    <text
-                      y={-10 * s}
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      style={{
-                        fontSize: 11 * s,
-                        fontWeight: 700,
-                        paintOrder: "stroke",
-                        stroke: "#0b1a2e",
-                        strokeWidth: 3 * s,
-                        strokeLinejoin: "round",
-                      }}
-                    >
-                      {office.city}
-                    </text>
-                  )}
-                  {isActive && (
-                    <text
-                      y={16 * s}
-                      textAnchor="middle"
-                      fill="#FFDC39"
-                      style={{
-                        fontSize: 9 * s,
-                        fontWeight: 600,
-                        paintOrder: "stroke",
-                        stroke: "#0b1a2e",
-                        strokeWidth: 3 * s,
-                        strokeLinejoin: "round",
-                      }}
-                    >
-                      {office.country}
-                    </text>
-                  )}
-                </motion.g>
-              </Marker>
+                </circle>
+              </g>
             );
           })}
-        </ZoomableGroup>
+        </g>
+
+        {/* Office pins — positioned by geographic coordinates */}
+        {OFFICES.map((office, i) => {
+          const isActive = active === office.id;
+          // Counter-scale keeps pins a fixed on-screen size at any width.
+          const s = glyph;
+          return (
+            <Marker
+              key={office.id}
+              coordinates={office.coordinates}
+              onMouseEnter={() => setActive(office.id)}
+              onMouseLeave={() => setActive(null)}
+              onClick={() => setActive(isActive ? null : office.id)}
+            >
+              <motion.g
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  duration: 0.45,
+                  delay: 0.3 + i * 0.15,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                style={{ cursor: "pointer" }}
+              >
+                {/* Radiating halo. Scales rather than animating the SVG `r`
+                    attribute directly — framer-motion writes an undefined `r`
+                    on the first frame of an attribute animation, which the
+                    browser rejects. 2.75x reproduces the original 4 → 11 span. */}
+                <motion.circle
+                  r={4 * s}
+                  fill="#FFDC39"
+                  initial={{ scale: 1, opacity: 0.5 }}
+                  animate={{ scale: 2.75, opacity: 0 }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    delay: i * 0.35,
+                    ease: "easeOut",
+                  }}
+                  style={{ transformOrigin: "center", transformBox: "fill-box" }}
+                />
+                <circle
+                  r={5 * s}
+                  fill="#FFDC39"
+                  stroke="#0b1a2e"
+                  strokeWidth={1.5 * s}
+                />
+                <circle r={1.8 * s} fill="#0b1a2e" />
+
+                {/* Label — counter-scaled; hidden when too narrow to fit,
+                    where tapping a pin reveals it instead. */}
+                {(showLabels || isActive) && (
+                  <text
+                    y={-10 * s}
+                    textAnchor="middle"
+                    fill="#ffffff"
+                    style={{
+                      fontSize: 11 * s,
+                      fontWeight: 700,
+                      paintOrder: "stroke",
+                      stroke: "#0b1a2e",
+                      strokeWidth: 3 * s,
+                      strokeLinejoin: "round",
+                    }}
+                  >
+                    {office.city}
+                  </text>
+                )}
+                {isActive && (
+                  <text
+                    y={16 * s}
+                    textAnchor="middle"
+                    fill="#FFDC39"
+                    style={{
+                      fontSize: 9 * s,
+                      fontWeight: 600,
+                      paintOrder: "stroke",
+                      stroke: "#0b1a2e",
+                      strokeWidth: 3 * s,
+                      strokeLinejoin: "round",
+                    }}
+                  >
+                    {office.country}
+                  </text>
+                )}
+              </motion.g>
+            </Marker>
+          );
+        })}
       </ComposableMap>
 
       {/* Legend — in normal flow so it never overlaps the map on small screens */}

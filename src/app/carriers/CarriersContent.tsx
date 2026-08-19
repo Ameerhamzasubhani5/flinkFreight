@@ -23,7 +23,6 @@ export default function CarriersContent() {
       <PageHero
         title={ca.heroTitle}
         subtitle={ca.heroSubtitle}
-        crumbs={[{ label: ca.crumb, href: "/carriers" }]}
       />
 
       <section className="section">

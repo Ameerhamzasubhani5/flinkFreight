@@ -6,6 +6,7 @@ const de = {
     aboutUs: "Über uns",
     services: "Leistungen",
     carriers: "Transportunternehmer",
+    career: "Karriere",
     contact: "Kontakt",
     getQuote: "Angebot anfragen",
     openMenu: "Menü öffnen",
@@ -13,7 +14,7 @@ const de = {
 
   home: {
     heroBadge: "Globale Logistik & Spedition",
-    heroTitle: "Wir bewegen Ihre Welt – eine Sendung nach der anderen.",
+    heroTitle: "Wir bewegen Ihre Welt, eine Sendung nach der anderen.",
     heroCta1: "Kostenloses Angebot",
     heroCta2: "Leistungen entdecken",
 
@@ -39,7 +40,7 @@ const de = {
     servicesEyebrow: "Was wir tun",
     servicesTitle: "Unsere Leistungen",
     servicesDesc:
-      "Von See- und Luftfracht bis hin zu Landtransport, Lagerung und Zollabwicklung – wir bieten Kapazitäten und Vielseitigkeit für ein umfangreiches Angebot an Logistikdienstleistungen.",
+      "Von See und Luftfracht bis hin zu Landtransport, Lagerung und Zollabwicklung – wir bieten Kapazitäten und Vielseitigkeit für ein umfangreiches Angebot an Logistikdienstleistungen.",
 
     valuesEyebrow: "Unser Versprechen",
     valuesTitle: "Werte, die uns vorantreiben",
@@ -84,7 +85,7 @@ const de = {
   services: {
     heroTitle: "Unsere Leistungen",
     heroSubtitle:
-      "Ein umfassendes Angebot an Transport- und Logistikdienstleistungen, individuell angepasst an Ihre Bedürfnisse.",
+      "Ein umfassendes Angebot an Transport und Logistikdienstleistungen, individuell angepasst an Ihre Bedürfnisse.",
     crumb: "Leistungen",
     requestQuote: "Angebot anfragen",
     learnMore: "Mehr erfahren",
@@ -149,8 +150,60 @@ const de = {
     subjectPlh: "Seefrachtenangebot",
     messageLbl: "Nachricht *",
     messagePlh: "Erzählen Sie uns von Ihrer Sendung…",
+    dimensionsTitle: "Paketmaße (optional)",
+    dimensionsHint: "Helfen Sie uns, Ihre Sendung besser einzuschätzen.",
+    lengthLbl: "Länge (cm)",
+    lengthPlh: "z. B. 40",
+    widthLbl: "Breite (cm)",
+    widthPlh: "z. B. 30",
+    heightLbl: "Höhe (cm)",
+    heightPlh: "z. B. 20",
+    weightLbl: "Gewicht (kg)",
+    weightPlh: "z. B. 5",
+    imageLbl: "Foto der Sendung (optional)",
+    imageHint: "JPG, PNG oder WEBP, maximal 5 MB",
+    fileTooLarge: "Die Datei darf maximal 5 MB groß sein.",
+    invalidFileType: "Bitte laden Sie ein JPG-, PNG- oder WEBP-Bild hoch.",
     sending: "Senden…",
     send: "Nachricht senden",
+  },
+
+  career: {
+    heroTitle: "Karriere",
+    heroSubtitle:
+      "Werden Sie Teil eines wachsenden Logistikteams, das Zuverlässigkeit und Innovation lebt.",
+    crumb: "Karriere",
+    eyebrow: "Werden Sie Teil unseres Teams",
+    title: "Warum bei Flink Freight arbeiten?",
+    body: "Wir suchen ständig motivierte Menschen, die mit uns wachsen wollen. Senden Sie uns Ihre Bewerbung – wir melden uns, sobald eine passende Stelle frei ist.",
+    bullets: [
+      "Wettbewerbsfähige Vergütung & Sozialleistungen",
+      "Klare Entwicklungs- und Aufstiegsmöglichkeiten",
+      "Ein kollegiales, unterstützendes Team",
+      "Arbeit an echten globalen Logistiklösungen",
+    ],
+    formTitle: "Jetzt bewerben",
+    formNote: "Mit * gekennzeichnete Felder sind Pflichtfelder.",
+  },
+
+  careerForm: {
+    nameLbl: "Vollständiger Name *",
+    namePlh: "Max Mustermann",
+    emailLbl: "E-Mail-Adresse *",
+    emailPlh: "max@beispiel.de",
+    phoneLbl: "Telefonnummer",
+    phonePlh: "+49 (0) 000 000000",
+    positionLbl: "Gewünschte Position",
+    positionPlh: "z. B. Speditionskaufmann/-frau",
+    messageLbl: "Anschreiben",
+    messagePlh: "Erzählen Sie uns kurz von sich…",
+    resumeLbl: "Lebenslauf oder Projektvorschlag (PDF oder Word) *",
+    resumeHint: "Maximale Dateigröße: 5 MB",
+    resumeRequired: "Bitte laden Sie Ihren Lebenslauf hoch.",
+    fileTooLarge: "Die Datei darf maximal 5 MB groß sein.",
+    invalidFileType: "Bitte laden Sie eine PDF- oder Word-Datei hoch.",
+    sending: "Wird gesendet…",
+    send: "Bewerbung senden",
   },
 
   newsletter: {
@@ -173,7 +226,7 @@ const de = {
   faq: {
     eyebrow: "FAQ",
     title: "Häufig gestellte Fragen",
-    description: "Alles, was Sie über die Arbeit mit FlinkFreight wissen müssen.",
+    description: "Alles, was Sie über die Arbeit mit Flink Freight wissen müssen.",
     items: [
       {
         q: "Welche Frachtarten bearbeiten Sie?",
@@ -313,7 +366,7 @@ const de = {
 
   carriersIntro: {
     title: "Carrier-Partnerschaften",
-    body: "FlinkFreight arbeitet Hand in Hand mit einem geprüften Netzwerk von See-, Luft- und Landcarriern rund um den Globus. Durch Partnerschaften mit führenden Carriern sichern wir wettbewerbsfähig bepreiste Kapazitäten und zuverlässige Transitzeiten für unsere Kunden – und wir sind immer auf der Suche nach zuverlässigen Partnern zur Erweiterung unseres Netzwerks.",
+    body: "Flink Freight arbeitet Hand in Hand mit einem geprüften Netzwerk von See-, Luft- und Landcarriern rund um den Globus. Durch Partnerschaften mit führenden Carriern sichern wir wettbewerbsfähig bepreiste Kapazitäten und zuverlässige Transitzeiten für unsere Kunden – und wir sind immer auf der Suche nach zuverlässigen Partnern zur Erweiterung unseres Netzwerks.",
     benefits: [
       {
         title: "Schnelle Zahlung & faire Tarife",
@@ -346,6 +399,7 @@ const en: typeof de = {
     aboutUs: "About Us",
     services: "Services",
     carriers: "Carriers",
+    career: "Careers",
     contact: "Contact",
     getQuote: "Get a Quote",
     openMenu: "Open menu",
@@ -488,8 +542,59 @@ const en: typeof de = {
     subjectPlh: "Ocean freight quote",
     messageLbl: "Message *",
     messagePlh: "Tell us about your shipment…",
+    dimensionsTitle: "Package Dimensions (optional)",
+    dimensionsHint: "Helps us better assess your shipment.",
+    lengthLbl: "Length (cm)",
+    lengthPlh: "e.g. 40",
+    widthLbl: "Width (cm)",
+    widthPlh: "e.g. 30",
+    heightLbl: "Height (cm)",
+    heightPlh: "e.g. 20",
+    weightLbl: "Weight (kg)",
+    weightPlh: "e.g. 5",
+    imageLbl: "Shipment photo (optional)",
+    imageHint: "JPG, PNG or WEBP, max 5MB",
+    fileTooLarge: "File must be 5MB or smaller.",
+    invalidFileType: "Please upload a JPG, PNG or WEBP image.",
     sending: "Sending…",
     send: "Send Message",
+  },
+
+  career: {
+    heroTitle: "Careers",
+    heroSubtitle: "Join a growing logistics team built on reliability and innovation.",
+    crumb: "Careers",
+    eyebrow: "Join Our Team",
+    title: "Why work at Flink Freight?",
+    body: "We're always looking for driven people to grow with us. Send us your application and we'll reach out as soon as a role fits.",
+    bullets: [
+      "Competitive pay & benefits",
+      "Clear growth and advancement paths",
+      "A collaborative, supportive team",
+      "Work on real, global logistics solutions",
+    ],
+    formTitle: "Apply Now",
+    formNote: "Fields marked with * are required.",
+  },
+
+  careerForm: {
+    nameLbl: "Full name *",
+    namePlh: "Jane Doe",
+    emailLbl: "Email address *",
+    emailPlh: "jane@example.com",
+    phoneLbl: "Phone number",
+    phonePlh: "+1 (555) 000-0000",
+    positionLbl: "Position of interest",
+    positionPlh: "e.g. Logistics Coordinator",
+    messageLbl: "Cover letter",
+    messagePlh: "Tell us a bit about yourself…",
+    resumeLbl: "Resumeor or Proposal  (PDF or Word)*",
+    resumeHint: "Maximum file size: 5MB",
+    resumeRequired: "Please upload your resume.",
+    fileTooLarge: "File must be 5MB or smaller.",
+    invalidFileType: "Please upload a PDF or Word document.",
+    sending: "Sending…",
+    send: "Submit Application",
   },
 
   newsletter: {
@@ -511,7 +616,7 @@ const en: typeof de = {
   faq: {
     eyebrow: "FAQ",
     title: "Frequently asked questions",
-    description: "Everything you need to know about working with FlinkFreight.",
+    description: "Everything you need to know about working with Flink Freight.",
     items: [
       {
         q: "What types of freight do you handle?",
@@ -651,7 +756,7 @@ const en: typeof de = {
 
   carriersIntro: {
     title: "Carrier Partnerships",
-    body: "FlinkFreight works hand-in-hand with a vetted network of ocean, air and ground carriers across the globe. By partnering with leading carriers we secure competitively priced capacity and dependable transit times for our customers — and we are always looking to grow our network with reliable partners.",
+    body: "Flink Freight works hand-in-hand with a vetted network of ocean, air and ground carriers across the globe. By partnering with leading carriers we secure competitively priced capacity and dependable transit times for our customers — and we are always looking to grow our network with reliable partners.",
     benefits: [
       {
         title: "Quick Pay & Fair Rates",

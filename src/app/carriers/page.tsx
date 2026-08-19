@@ -4,7 +4,7 @@ import CarriersContent from "./CarriersContent";
 export const metadata: Metadata = {
   title: "Carriers",
   description:
-    "Partner with FlinkFreight Logistics. Competitive rates, consistent freight, dedicated support and modern technology for our carrier network.",
+    "Partner with Flink Freight Logistics. Competitive rates, consistent freight, dedicated support and modern technology for our carrier network.",
 };
 
 export default function CarriersPage() {

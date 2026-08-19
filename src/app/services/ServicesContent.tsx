@@ -20,7 +20,6 @@ export default function ServicesContent() {
       <PageHero
         title={sv.heroTitle}
         subtitle={sv.heroSubtitle}
-        crumbs={[{ label: sv.crumb, href: "/services" }]}
       />
 
       <section className="section">
