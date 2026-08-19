@@ -9,7 +9,7 @@ export default function CTASection({
   title,
   text,
   buttonLabel = "Request a Quote",
-  buttonHref = "/contact",
+  buttonHref,
 }: {
   title: string;
   text?: string;
@@ -25,7 +25,7 @@ export default function CTASection({
           </h2>
           {text && <p className="max-w-xl text-slate-300">{text}</p>}
           <Button asChild variant="accent" size="lg">
-            <Link href={buttonHref}>{buttonLabel}</Link>
+            <Link href={buttonHref?? "/contact"}>{buttonLabel}</Link>
           </Button>
         </Reveal>
       </div>

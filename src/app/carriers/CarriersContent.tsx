@@ -32,7 +32,7 @@ export default function CarriersContent() {
             <h2 className="mt-3 text-3xl font-bold md:text-4xl">{ci.title}</h2>
             <p className="mt-5 text-muted-foreground">{ci.body}</p>
             <Button asChild className="mt-8">
-              <Link href="/contact">{ca.becomeCta}</Link>
+              <Link href="/career">{ca.becomeCta}</Link>
             </Button>
           </Reveal>
           <Stagger className="grid gap-5 sm:grid-cols-2">
@@ -78,6 +78,7 @@ export default function CarriersContent() {
         title={ca.ctaTitle}
         text={ca.ctaText}
         buttonLabel={ca.ctaButton}
+        buttonHref="/career"
       />
     </>
   );
