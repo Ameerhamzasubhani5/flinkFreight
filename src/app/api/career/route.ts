@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import CareerApplication from "@/models/CareerApplication";
 import { sendCareerApplicationEmail } from "@/lib/email";
-import { deliverSubmission } from "@/lib/submissions";
 import { uploadToOneDrive, isGraphConfigured } from "@/lib/msGraph";
 import { MAX_UPLOAD_BYTES, RESUME_MIME_TYPES } from "@/lib/uploads";
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DISABLED — database persistence, removed 2026-08-19.
+ *
+ * Applications are no longer stored in MongoDB. The CV goes to Microsoft 365
+ * (OneDrive) and the team gets an email containing a link to it, so the inbox
+ * is the record. To restore the database, uncomment these imports and the
+ * `CareerApplication.create(...)` block further down, and uncomment
+ * src/lib/mongodb.ts and src/models/CareerApplication.ts.
+ *
+ * import { connectToDatabase } from "@/lib/mongodb";
+ * import CareerApplication from "@/models/CareerApplication";
+ * import { deliverSubmission } from "@/lib/submissions";
+ * ───────────────────────────────────────────────────────────────────────── */
 
 export async function POST(request: Request) {
   try {
@@ -47,56 +58,32 @@ export async function POST(request: Request) {
       );
     }
 
-    const buffer = Buffer.from(await resume.arrayBuffer());
-    let resumeUrl: string | undefined;
-    let resumeData: Buffer | undefined;
-
-    if (isGraphConfigured()) {
-      try {
-        const uploaded = await uploadToOneDrive(buffer, resume.name, "CareerApplications");
-        resumeUrl = uploaded.webUrl;
-      } catch (err) {
-        console.error("OneDrive resume upload failed:", err);
-        resumeData = buffer; // fall back to storing it in Mongo
-      }
-    } else {
-      resumeData = buffer;
-    }
-
-    const { delivered } = await deliverSubmission(
-      "career",
-      async () => {
-        await connectToDatabase();
-        await CareerApplication.create({
-          name,
-          email,
-          phone,
-          position,
-          message,
-          resumeFileName: resume.name,
-          resumeMimeType: resume.type,
-          resumeUrl,
-          resumeData,
-        });
-      },
-      () =>
-        sendCareerApplicationEmail({
-          name,
-          email,
-          phone,
-          position,
-          message,
-          resumeFileName: resume.name,
-          resumeUrl,
-        })
-    );
-
-    if (!delivered) {
+    // The CV is the point of the application, so unlike the contact photo a
+    // failed upload is fatal here — without it there is nothing to review.
+    if (!isGraphConfigured()) {
+      console.error(
+        "[career] Microsoft Graph is not configured — cannot store the CV."
+      );
       return NextResponse.json(
         { error: "We couldn't submit your application right now. Please try again in a moment." },
         { status: 503 }
       );
     }
+
+    const buffer = Buffer.from(await resume.arrayBuffer());
+    const uploaded = await uploadToOneDrive(buffer, resume.name, "CareerApplications");
+    const resumeUrl = uploaded.webUrl;
+
+    // With no database, the email is the only record of the application.
+    await sendCareerApplicationEmail({
+      name,
+      email,
+      phone,
+      position,
+      message,
+      resumeFileName: resume.name,
+      resumeUrl,
+    });
 
     return NextResponse.json(
       { message: "Thanks for applying! Our team will review your application and be in touch soon." },
@@ -105,8 +92,8 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("Career application error:", err);
     return NextResponse.json(
-      { error: "Something went wrong. Please try again later." },
-      { status: 500 }
+      { error: "We couldn't submit your application right now. Please try again in a moment." },
+      { status: 503 }
     );
   }
 }

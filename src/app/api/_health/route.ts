@@ -1,3 +1,15 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DISABLED — 2026-08-19.
+ *
+ * This endpoint existed only to ping MongoDB and keep the free Atlas cluster
+ * from being auto-paused. With the database gone there is nothing to keep
+ * alive, and the daily cron in vercel.json has been removed with it.
+ *
+ * Kept commented out in case it is needed again. To restore: uncomment
+ * everything below and re-enable src/lib/mongodb.ts and the models.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/*
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
@@ -15,7 +27,7 @@ export const dynamic = "force-dynamic";
  *
  * Also useful for uptime monitors — returns 200 only when the database is
  * actually reachable.
- */
+ *\/
 export async function GET() {
   const startedAt = Date.now();
 
@@ -45,3 +57,5 @@ export async function GET() {
     );
   }
 }
+
+*/

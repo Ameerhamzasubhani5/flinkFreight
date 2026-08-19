@@ -1,3 +1,15 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DISABLED — 2026-08-19.
+ *
+ * The newsletter sign-up wrote subscribers straight to MongoDB and had no
+ * other destination, so it is switched off along with the database. The
+ * footer form that called it is commented out in src/components/Footer.tsx.
+ *
+ * Kept commented out in case it is needed again. To restore: uncomment
+ * everything below and re-enable src/lib/mongodb.ts and the models.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/*
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Subscriber from "@/models/Subscriber";
@@ -35,3 +47,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+*/

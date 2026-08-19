@@ -6,8 +6,24 @@ import { Mail, MapPin, Phone } from "lucide-react";
 import { company, navLinks } from "@/lib/site";
 import { useApp } from "@/contexts/AppContext";
 import Logo from "@/components/shared/Logo";
-import NewsletterForm from "@/components/NewsletterForm";
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DISABLED — newsletter sign-up, 2026-08-19.
+ * It wrote subscribers to MongoDB and has no destination now that the database
+ * is gone. To restore: uncomment this import, the <NewsletterForm /> block
+ * below, and src/app/api/subscribe/route.ts.
+ *
+ * import NewsletterForm from "@/components/NewsletterForm";
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DISABLED — social media links, 2026-08-19.
+ * Switched off until the company's social accounts are live (the Facebook and
+ * X entries in src/lib/site.ts are still placeholder "#" links). To restore:
+ * uncomment this array and the icon row below, and set the real URLs in
+ * `company.social` in src/lib/site.ts.
+ * ───────────────────────────────────────────────────────────────────────── */
+/*
 const socials = [
   {
     label: "LinkedIn",
@@ -25,6 +41,7 @@ const socials = [
     path: "M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817-5.966 6.817h-3.31l7.73-8.835-8.156-10.665h6.83l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833l-11.832-15.66h-1.967l11.966 15.66z",
   },
 ];
+*/
 
 const NAV_KEYS = ["home", "aboutUs", "services", "carriers", "career", "contact"] as const;
 
@@ -46,6 +63,7 @@ export default function Footer() {
               .replace("{tagline}", company.tagline)
               .replace("{years}", String(company.yearsExperience))}
           </p>
+          {/* DISABLED — social icons, see the `socials` note at the top of this file.
           <div className="mt-5 flex gap-3">
             {socials.map((s) => (
               <a
@@ -67,6 +85,7 @@ export default function Footer() {
               </a>
             ))}
           </div>
+          */}
         </div>
 
         <div>
@@ -125,9 +144,11 @@ export default function Footer() {
               </a>
             </li>
           </ul>
+          {/* DISABLED — newsletter sign-up, see the note at the top of this file.
           <div className="mt-5">
             <NewsletterForm />
           </div>
+          */}
         </div>
       </div>
 

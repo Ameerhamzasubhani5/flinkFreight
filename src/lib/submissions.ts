@@ -1,3 +1,15 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DISABLED — 2026-08-19.
+ *
+ * This coordinated two delivery channels (database + email) and accepted a
+ * submission if either succeeded. With the database gone there is only one
+ * channel left, so the API routes now simply await the email directly.
+ *
+ * Kept commented out in case it is needed again. To restore: uncomment
+ * everything below and re-enable src/lib/mongodb.ts and the models.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/*
 /**
  * Shared delivery strategy for the public forms (contact + career).
  *
@@ -8,7 +20,7 @@
  *
  * Only when both channels fail does the caller get an error and a chance to
  * resend.
- */
+ *\/
 
 // Hard ceiling on how long the database channel may hold the visitor's
 // request open. The two channels run in parallel, so when Atlas is unreachable
@@ -60,3 +72,5 @@ export async function deliverSubmission(
 
   return { stored, emailed, delivered: stored || emailed };
 }
+
+*/

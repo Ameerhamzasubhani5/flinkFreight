@@ -1,3 +1,15 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DISABLED — MongoDB was removed from the site on 2026-08-19.
+ *
+ * Submissions now go straight to Microsoft 365 (OneDrive) and are emailed to
+ * the team, so no database is involved. This file is kept, commented out, in
+ * case the database is reintroduced later.
+ *
+ * To restore: uncomment everything below, reinstate the `mongoose` import in
+ * the API route that used it, and set MONGODB_URI in the environment.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/*
 import mongoose from "mongoose";
 
 /**
@@ -15,7 +27,7 @@ import mongoose from "mongoose";
  *    a long gap is slow. The timeouts below fail fast rather than hanging the
  *    request for the driver's 30s default, and `connectWithRetry` gives a
  *    waking cluster a second chance before surfacing an error.
- */
+ *\/
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -95,3 +107,5 @@ export async function connectToDatabase() {
 
   return cached.conn;
 }
+
+*/

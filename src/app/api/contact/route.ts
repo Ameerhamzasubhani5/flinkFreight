@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import Contact from "@/models/Contact";
 import { sendContactEmail } from "@/lib/email";
-import { deliverSubmission } from "@/lib/submissions";
 import { uploadToOneDrive, isGraphConfigured } from "@/lib/msGraph";
 import { MAX_UPLOAD_BYTES, IMAGE_MIME_TYPES } from "@/lib/uploads";
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DISABLED — database persistence, removed 2026-08-19.
+ *
+ * Enquiries are no longer stored in MongoDB. The photo goes to Microsoft 365
+ * (OneDrive) and the team gets an email containing a link to it, so the inbox
+ * is the record. To restore the database, uncomment these imports and the
+ * `Contact.create(...)` block further down, and uncomment src/lib/mongodb.ts
+ * and src/models/Contact.ts.
+ *
+ * import { connectToDatabase } from "@/lib/mongodb";
+ * import Contact from "@/models/Contact";
+ * import { deliverSubmission } from "@/lib/submissions";
+ * ───────────────────────────────────────────────────────────────────────── */
 
 function toNumber(value: FormDataEntryValue | null): number | undefined {
   if (typeof value !== "string" || value.trim() === "") return undefined;
@@ -61,50 +72,29 @@ export async function POST(request: Request) {
       }
     }
 
+    // Upload the photo to OneDrive first — the email carries a link to it.
+    // A failed upload does not block the enquiry: the team still gets the
+    // message, just without the photo, and the error is logged.
     let imageUrl: string | undefined;
-    let imageBuffer: Buffer | undefined;
-
     if (image) {
-      const buffer = Buffer.from(await image.arrayBuffer());
-      if (isGraphConfigured()) {
+      if (!isGraphConfigured()) {
+        console.warn(
+          "[contact] Microsoft Graph is not configured — the photo was not stored."
+        );
+      } else {
         try {
+          const buffer = Buffer.from(await image.arrayBuffer());
           const uploaded = await uploadToOneDrive(buffer, image.name, "ContactUploads");
           imageUrl = uploaded.webUrl;
         } catch (err) {
-          console.error("OneDrive image upload failed:", err);
-          imageBuffer = buffer; // fall back to storing it in Mongo
+          console.error("[contact] OneDrive upload failed:", err);
         }
-      } else {
-        imageBuffer = buffer;
       }
     }
 
-    const { delivered } = await deliverSubmission(
-      "contact",
-      async () => {
-        await connectToDatabase();
-        await Contact.create({
-          name,
-          email,
-          phone,
-          subject,
-          message,
-          dimensions,
-          imageFileName: image?.name,
-          imageMimeType: image?.type,
-          imageUrl,
-          imageData: imageBuffer,
-        });
-      },
-      () => sendContactEmail({ name, email, phone, subject, message, dimensions, imageUrl })
-    );
-
-    if (!delivered) {
-      return NextResponse.json(
-        { error: "We couldn't send your message right now. Please try again in a moment." },
-        { status: 503 }
-      );
-    }
+    // With no database, the email is the only record — so a failure here has
+    // to reach the visitor, otherwise the enquiry is silently lost.
+    await sendContactEmail({ name, email, phone, subject, message, dimensions, imageUrl });
 
     return NextResponse.json(
       { message: "Thanks for reaching out! We'll get back to you soon." },
@@ -113,8 +103,8 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("Contact form error:", err);
     return NextResponse.json(
-      { error: "Something went wrong. Please try again later." },
-      { status: 500 }
+      { error: "We couldn't send your message right now. Please try again in a moment." },
+      { status: 503 }
     );
   }
 }
