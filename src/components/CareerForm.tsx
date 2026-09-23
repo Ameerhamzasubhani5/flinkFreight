@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/contexts/AppContext";
+import { formEndpoint } from "@/lib/formEndpoint";
 import { MAX_UPLOAD_BYTES, RESUME_MIME_TYPES, RESUME_ACCEPT } from "@/lib/uploads";
 
 const initial = {
@@ -68,7 +69,7 @@ export default function CareerForm() {
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
       body.append("resume", resume);
 
-      const res = await fetch("/api/career", { method: "POST", body });
+      const res = await fetch(formEndpoint("/api/career"), { method: "POST", body });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit application");
       setStatus("ok");

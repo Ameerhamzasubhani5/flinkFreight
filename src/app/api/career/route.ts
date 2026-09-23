@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { preflight, withCors } from "@/lib/cors";
 import { sendCareerApplicationEmail } from "@/lib/email";
 import { uploadToOneDrive, isGraphConfigured } from "@/lib/msGraph";
 import { MAX_UPLOAD_BYTES, RESUME_MIME_TYPES, CAREER_FOLDER } from "@/lib/uploads";
@@ -17,6 +18,11 @@ import { MAX_UPLOAD_BYTES, RESUME_MIME_TYPES, CAREER_FOLDER } from "@/lib/upload
  * import { deliverSubmission } from "@/lib/submissions";
  * ───────────────────────────────────────────────────────────────────────── */
 
+// Browser pre-flight for the cross-origin POST from the static site.
+export async function OPTIONS(request: Request) {
+  return preflight(request);
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -30,32 +36,32 @@ export async function POST(request: Request) {
     const resume = resumeEntry instanceof File && resumeEntry.size > 0 ? resumeEntry : null;
 
     if (!name || !email || !resume) {
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { error: "Name, email and a resume file are required." },
         { status: 400 }
-      );
+      ), request);
     }
 
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!emailOk) {
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { error: "Please provide a valid email address." },
         { status: 400 }
-      );
+      ), request);
     }
 
     if (resume.size > MAX_UPLOAD_BYTES) {
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { error: "Resume must be 5MB or smaller." },
         { status: 400 }
-      );
+      ), request);
     }
 
     if (!RESUME_MIME_TYPES.includes(resume.type)) {
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { error: "Resume must be a PDF or Word document." },
         { status: 400 }
-      );
+      ), request);
     }
 
     // The CV is the point of the application, so unlike the contact photo a
@@ -64,10 +70,10 @@ export async function POST(request: Request) {
       console.error(
         "[career] Microsoft Graph is not configured — cannot store the CV."
       );
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { error: "We couldn't submit your application right now. Please try again in a moment." },
         { status: 503 }
-      );
+      ), request);
     }
 
     const buffer = Buffer.from(await resume.arrayBuffer());
@@ -85,15 +91,15 @@ export async function POST(request: Request) {
       resumeUrl,
     });
 
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       { message: "Thanks for applying! Our team will review your application and be in touch soon." },
       { status: 201 }
-    );
+    ), request);
   } catch (err) {
     console.error("Career application error:", err);
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       { error: "We couldn't submit your application right now. Please try again in a moment." },
       { status: 503 }
-    );
+    ), request);
   }
 }

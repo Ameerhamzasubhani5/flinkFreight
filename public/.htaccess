@@ -1,0 +1,44 @@
+# Apache config for the static site on STRATO.
+# Next copies everything in public/ into out/, so this ships with the build.
+
+# ── Force HTTPS ─────────────────────────────────────────────────────────────
+# STRATO issues the certificate; this makes sure nobody is served over http://.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+</IfModule>
+
+# ── 404 page ────────────────────────────────────────────────────────────────
+# Without this Apache shows its own bare error page instead of the site's.
+ErrorDocument 404 /404.html
+
+# ── Caching ─────────────────────────────────────────────────────────────────
+# Files under /_next/static/ carry a content hash in their name, so they can
+# be cached hard — a new build produces new filenames. HTML must never be
+# cached that way or visitors keep seeing the previous version after a deploy.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|woff2|png|jpg|jpeg|webp|svg|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+
+  # Modest hardening — the site loads no third-party scripts.
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# ── Compression ─────────────────────────────────────────────────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript application/json image/svg+xml
+</IfModule>

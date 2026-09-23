@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/contexts/AppContext";
+import { formEndpoint } from "@/lib/formEndpoint";
 import { MAX_UPLOAD_BYTES, IMAGE_MIME_TYPES, IMAGE_ACCEPT } from "@/lib/uploads";
 
 const initial = {
@@ -65,7 +66,7 @@ export default function ContactForm() {
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
       if (image) body.append("image", image);
 
-      const res = await fetch("/api/contact", { method: "POST", body });
+      const res = await fetch(formEndpoint("/api/contact"), { method: "POST", body });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send message");
       setStatus("ok");

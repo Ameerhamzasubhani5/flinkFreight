@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { preflight, withCors } from "@/lib/cors";
 import { sendContactEmail } from "@/lib/email";
 import { uploadToOneDrive, isGraphConfigured } from "@/lib/msGraph";
 import { MAX_UPLOAD_BYTES, IMAGE_MIME_TYPES, CONTACT_FOLDER } from "@/lib/uploads";
@@ -23,6 +24,11 @@ function toNumber(value: FormDataEntryValue | null): number | undefined {
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
+// Browser pre-flight for the cross-origin POST from the static site.
+export async function OPTIONS(request: Request) {
+  return preflight(request);
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -43,32 +49,32 @@ export async function POST(request: Request) {
     const image = imageEntry instanceof File && imageEntry.size > 0 ? imageEntry : null;
 
     if (!name || !email || !message) {
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { error: "Name, email and message are required." },
         { status: 400 }
-      );
+      ), request);
     }
 
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!emailOk) {
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { error: "Please provide a valid email address." },
         { status: 400 }
-      );
+      ), request);
     }
 
     if (image) {
       if (image.size > MAX_UPLOAD_BYTES) {
-        return NextResponse.json(
+        return withCors(NextResponse.json(
           { error: "Image must be 5MB or smaller." },
           { status: 400 }
-        );
+        ), request);
       }
       if (!IMAGE_MIME_TYPES.includes(image.type)) {
-        return NextResponse.json(
+        return withCors(NextResponse.json(
           { error: "Image must be a JPG, PNG or WEBP file." },
           { status: 400 }
-        );
+        ), request);
       }
     }
 
@@ -96,15 +102,15 @@ export async function POST(request: Request) {
     // to reach the visitor, otherwise the enquiry is silently lost.
     await sendContactEmail({ name, email, phone, subject, message, dimensions, imageUrl });
 
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       { message: "Thanks for reaching out! We'll get back to you soon." },
       { status: 201 }
-    );
+    ), request);
   } catch (err) {
     console.error("Contact form error:", err);
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       { error: "We couldn't send your message right now. Please try again in a moment." },
       { status: 503 }
-    );
+    ), request);
   }
 }
