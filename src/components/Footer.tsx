@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
+// `Phone` is unused while the phone number is disabled below — restore it
+// alongside that block.
 
-import { company, navLinks } from "@/lib/site";
+import { company, navLinks, getContactEmail } from "@/lib/site";
 import { useApp } from "@/contexts/AppContext";
 import Logo from "@/components/shared/Logo";
 
@@ -46,7 +48,8 @@ const socials = [
 const NAV_KEYS = ["home", "aboutUs", "services", "carriers", "career", "contact"] as const;
 
 export default function Footer() {
-  const { t } = useApp();
+  const { t, locale } = useApp();
+  const contactEmail = getContactEmail(locale);
 
   const localizedNavLinks = navLinks.map((link, i) => ({
     ...link,
@@ -133,16 +136,19 @@ export default function Footer() {
             </li>
             <li className="flex items-center gap-3">
               <Mail className="h-5 w-5 shrink-0 text-accent" />
-              <a href={`mailto:${company.email}`} className="hover:text-accent">
-                {company.email}
+              <a href={`mailto:${contactEmail}`} className="hover:text-accent">
+                {contactEmail}
               </a>
             </li>
+            {/* DISABLED — phone number, 2026-08-22: no confirmed number yet.
+                Restore alongside company.phone in src/lib/site.ts.
             <li className="flex items-center gap-3">
               <Phone className="h-5 w-5 shrink-0 text-accent" />
               <a href={`tel:${company.phone}`} className="hover:text-accent">
                 {company.phone}
               </a>
             </li>
+            */}
           </ul>
           {/* DISABLED — newsletter sign-up, see the note at the top of this file.
           <div className="mt-5">

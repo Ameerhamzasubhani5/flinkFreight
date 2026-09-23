@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendContactEmail } from "@/lib/email";
 import { uploadToOneDrive, isGraphConfigured } from "@/lib/msGraph";
-import { MAX_UPLOAD_BYTES, IMAGE_MIME_TYPES } from "@/lib/uploads";
+import { MAX_UPLOAD_BYTES, IMAGE_MIME_TYPES, CONTACT_FOLDER } from "@/lib/uploads";
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * DISABLED — database persistence, removed 2026-08-19.
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       } else {
         try {
           const buffer = Buffer.from(await image.arrayBuffer());
-          const uploaded = await uploadToOneDrive(buffer, image.name, "ContactUploads");
+          const uploaded = await uploadToOneDrive(buffer, image.name, CONTACT_FOLDER);
           imageUrl = uploaded.webUrl;
         } catch (err) {
           console.error("[contact] OneDrive upload failed:", err);

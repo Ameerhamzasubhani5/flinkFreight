@@ -1,9 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { MapPin, Mail, Phone } from "lucide-react";
+import { MapPin, Mail } from "lucide-react";
+// `Phone` is unused while the phone number is disabled below — restore it
+// alongside that block.
 
-import { company } from "@/lib/site";
+import { company, getContactEmail } from "@/lib/site";
 import { useApp } from "@/contexts/AppContext";
 import PageHero from "@/components/PageHero";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,11 +22,12 @@ const OfficeMap = dynamic(() => import("@/components/OfficeMap"), {
   ),
 });
 
-const detailIcons = [MapPin, Mail, Phone] as const;
+const detailIcons = [MapPin, Mail] as const;
 
 export default function ContactContent() {
-  const { t } = useApp();
+  const { t, locale } = useApp();
   const co = t.contact;
+  const contactEmail = getContactEmail(locale);
 
   const details = [
     {
@@ -42,20 +45,23 @@ export default function ContactContent() {
       icon: detailIcons[1],
       label: co.email,
       value: (
-        <a href={`mailto:${company.email}`} className="hover:text-primary">
-          {company.email}
+        <a href={`mailto:${contactEmail}`} className="hover:text-primary">
+          {contactEmail}
         </a>
       ),
     },
-    {
-      icon: detailIcons[2],
-      label: co.phone,
-      value: (
-        <a href={`tel:${company.phone}`} className="hover:text-primary">
-          {company.phone}
-        </a>
-      ),
-    },
+    // DISABLED — phone number, 2026-08-22: no confirmed number yet. Restore
+    // alongside company.phone in src/lib/site.ts (and the Phone icon import
+    // above, and re-add detailIcons[2] to the array).
+    // {
+    //   icon: Phone,
+    //   label: co.phone,
+    //   value: (
+    //     <a href={`tel:${company.phone}`} className="hover:text-primary">
+    //       {company.phone}
+    //     </a>
+    //   ),
+    // },
   ];
 
   return (

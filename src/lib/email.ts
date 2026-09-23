@@ -1,22 +1,51 @@
-import { Resend } from "resend";
+import { sendMailViaGraph } from "@/lib/msGraph";
 
-// Lazily instantiated so the module is safe to import even when the key is absent.
-let _resend: Resend | null = null;
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SWITCHED TO MICROSOFT 365 — 2026-08-26.
+ *
+ * Mail now goes out through Microsoft Graph using the same app registration
+ * that already handles SharePoint uploads, rather than through Resend.
+ *
+ * Why: Resend needs an MX record on a `send.` subdomain to verify a sending
+ * domain, and STRATO's DNS panel cannot create MX records for subdomains —
+ * only for the domain itself. That left both flinkfreight.de and .eu stuck at
+ * "not verified" and unable to send. Microsoft 365 sends from a real mailbox
+ * whose SPF/DKIM is already valid, so there is no DNS work, no API key and no
+ * domain verification to maintain.
+ *
+ * To go back to Resend (only worth it if STRATO ever adds the MX record):
+ * reinstate the import and helper below, swap the sendMailViaGraph(...) calls
+ * for resend.emails.send(...), and set RESEND_API_KEY / RESEND_FROM_EMAIL.
+ * Keep the `error` check — the Resend SDK resolves rather than throws on an
+ * API-level failure, so without it a rejected send looks like success.
+ *
+ * import { Resend } from "resend";
+ *
+ * let _resend: Resend | null = null;
+ *
+ * function getResend(): Resend {
+ *   if (!_resend) {
+ *     const key = process.env.RESEND_API_KEY;
+ *     if (!key) throw new Error("RESEND_API_KEY is not set in environment variables.");
+ *     _resend = new Resend(key);
+ *   }
+ *   return _resend;
+ * }
+ *
+ * const FROM = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+ * ───────────────────────────────────────────────────────────────────────── */
 
-function getResend(): Resend {
-  if (!_resend) {
-    const key = process.env.RESEND_API_KEY;
-    if (!key) throw new Error("RESEND_API_KEY is not set in environment variables.");
-    _resend = new Resend(key);
-  }
-  return _resend;
+// CONTACT_TO_EMAIL / CAREER_TO_EMAIL accept a comma-separated list, so a
+// notification reaches every regional inbox (e.g. the .de and .eu addresses)
+// regardless of which language the visitor used.
+function parseRecipients(value: string | undefined): string[] {
+  return (value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-const FROM = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
-const TO = process.env.CONTACT_TO_EMAIL ?? "";
-// Career applications default to the same inbox as the contact form unless a
-// dedicated one is configured.
-const CAREER_TO = process.env.CAREER_TO_EMAIL ?? TO;
+const TO = parseRecipients(process.env.CONTACT_TO_EMAIL);
+// Career applications default to the same inbox(es) as the contact form
+// unless dedicated ones are configured.
+const CAREER_TO = process.env.CAREER_TO_EMAIL ? parseRecipients(process.env.CAREER_TO_EMAIL) : TO;
 
 export interface ContactPayload {
   name: string;
@@ -44,22 +73,19 @@ export interface CareerApplicationPayload {
 }
 
 export async function sendContactEmail(data: ContactPayload) {
-  if (!TO) {
+  if (TO.length === 0) {
     // Throw rather than silently returning: the caller treats a resolved
     // promise as "the team was notified", so a missing recipient has to be
     // reported as a failed delivery channel, not a successful one.
     throw new Error("CONTACT_TO_EMAIL is not set — cannot dispatch notification.");
   }
 
-  const resend = getResend();
-
   const dims = data.dimensions;
   const hasDims =
     dims && (dims.length || dims.width || dims.height || dims.weight);
 
-  await resend.emails.send({
-    from: `Flink Freight <${FROM}>`,
-    to: [TO],
+  await sendMailViaGraph({
+    to: TO,
     replyTo: data.email,
     subject: data.subject
       ? `Contact Form: ${data.subject}`
@@ -140,18 +166,15 @@ export async function sendContactEmail(data: ContactPayload) {
 }
 
 export async function sendCareerApplicationEmail(data: CareerApplicationPayload) {
-  if (!CAREER_TO) {
+  if (CAREER_TO.length === 0) {
     // See sendContactEmail — a missing recipient is a failed delivery channel.
     throw new Error(
       "CAREER_TO_EMAIL (or CONTACT_TO_EMAIL) is not set — cannot dispatch notification."
     );
   }
 
-  const resend = getResend();
-
-  await resend.emails.send({
-    from: `Flink Freight <${FROM}>`,
-    to: [CAREER_TO],
+  await sendMailViaGraph({
+    to: CAREER_TO,
     replyTo: data.email,
     subject: data.position
       ? `New Career Application: ${data.name} — ${data.position}`

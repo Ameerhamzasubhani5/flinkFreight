@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendCareerApplicationEmail } from "@/lib/email";
 import { uploadToOneDrive, isGraphConfigured } from "@/lib/msGraph";
-import { MAX_UPLOAD_BYTES, RESUME_MIME_TYPES } from "@/lib/uploads";
+import { MAX_UPLOAD_BYTES, RESUME_MIME_TYPES, CAREER_FOLDER } from "@/lib/uploads";
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * DISABLED — database persistence, removed 2026-08-19.
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await resume.arrayBuffer());
-    const uploaded = await uploadToOneDrive(buffer, resume.name, "CareerApplications");
+    const uploaded = await uploadToOneDrive(buffer, resume.name, CAREER_FOLDER);
     const resumeUrl = uploaded.webUrl;
 
     // With no database, the email is the only record of the application.

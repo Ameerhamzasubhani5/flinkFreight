@@ -252,10 +252,10 @@ const de = {
   },
 
   stats: [
-    { value: "20+", label: "Jahre Erfahrung" },
-    { value: "150+", label: "Globale Carrier-Partner" },
+    { value: "12+", label: "Jahre Erfahrung" },
+    { value: "30+", label: "Globale Carrier-Partner" },
     { value: "50.000+", label: "Gelieferte Sendungen" },
-    { value: "98 %", label: "Pünktliche Lieferung" },
+    { value: "99 %", label: "Pünktliche Lieferung" },
   ],
 
   values: [
@@ -642,10 +642,10 @@ const en: typeof de = {
   },
 
   stats: [
-    { value: "20+", label: "Years of experience" },
-    { value: "150+", label: "Global carrier partners" },
+    { value: "12+", label: "Years of experience" },
+    { value: "30+", label: "Global carrier partners" },
     { value: "50k+", label: "Shipments delivered" },
-    { value: "98%", label: "On-time delivery" },
+    { value: "99%", label: "On-time delivery" },
   ],
 
   values: [

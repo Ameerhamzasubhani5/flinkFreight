@@ -38,3 +38,13 @@ next-env.d.ts
 .gstack/
 .claude/
 graphify-out/
+
+# generated documents — the markdown source in docs/ is the thing to edit.
+# Regenerate with:  pdf generate docs/setup-guide.md docs/<name>.pdf
+docs/*.pdf
+
+# editor / OS noise
+.idea/
+.vscode/
+Thumbs.db
+*.swp

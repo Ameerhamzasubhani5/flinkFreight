@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { geoMercator } from "d3-geo";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 
 import { cn } from "@/lib/utils";
@@ -36,16 +36,51 @@ const MAP_PROJECTION = geoMercator()
 
 type Office = {
   id: string;
+  /** Region this office covers — shown above the city on the hover card. */
+  region: string;
   city: string;
   country: string;
+  /** Street address, one line per array entry. */
+  address: string[];
   coordinates: [number, number]; // [lng, lat]
 };
 
 const OFFICES: Office[] = [
-  { id: "ca", city: "Toronto", country: "Canada", coordinates: [-79.3832, 43.6532] },
-  { id: "de", city: "Berlin", country: "Germany", coordinates: [13.405, 52.52] },
-  { id: "pk", city: "Lahore", country: "Pakistan", coordinates: [74.3587, 31.5204] },
-  { id: "ae", city: "Dubai", country: "UAE", coordinates: [55.2708, 25.2048] },
+  {
+    id: "ca",
+    region: "North America",
+    city: "Brampton",
+    country: "Canada",
+    address: ["1 Gateway Blvd Ste 200", "Brampton, ON L6T 0G3, Canada"],
+    coordinates: [-79.7663, 43.6834],
+  },
+  {
+    id: "de",
+    region: "Europe",
+    city: "Schönefeld",
+    country: "Germany",
+    address: ["Willy-Brand-Platz 2", "12529 Schönefeld, Germany"],
+    coordinates: [13.5225, 52.3889],
+  },
+  {
+    id: "pk",
+    region: "Asia",
+    city: "Rawalpindi",
+    country: "Pakistan",
+    address: ["Office No 703, Kohistan Tower", "Saddar, Rawalpindi, Pakistan"],
+    coordinates: [73.0551, 33.5951],
+  },
+  {
+    id: "ae",
+    region: "Gulf",
+    city: "Dubai",
+    country: "UAE",
+    address: [
+      "Dubai Digital Park, Bldg A1",
+      "IFZA, Silicon Oasis, Dubai, UAE",
+    ],
+    coordinates: [55.3806, 25.1195],
+  },
 ];
 
 // Countries highlighted on the map, grouped by the broader region each office
@@ -74,9 +109,26 @@ const OPERATING_COUNTRIES = new Set([
   ...GULF_COUNTRIES,
 ]);
 
+/**
+ * Which office covers each highlighted country, so hovering anywhere in a
+ * region reveals that region's office rather than only the pin itself.
+ *
+ * Order matters: the Gulf states also appear in ASIA_COUNTRIES, and being
+ * applied last they win — hovering the UAE shows Dubai, not Rawalpindi.
+ */
+const COUNTRY_TO_OFFICE = new Map<string, string>();
+for (const [countries, officeId] of [
+  [EU_COUNTRIES, "de"],
+  [NORTH_AMERICA_COUNTRIES, "ca"],
+  [ASIA_COUNTRIES, "pk"],
+  [GULF_COUNTRIES, "ae"],
+] as const) {
+  for (const country of countries) COUNTRY_TO_OFFICE.set(country, officeId);
+}
+
 // Routes drawn between offices, as pairs of indices into OFFICES.
 const ROUTES: [number, number][] = [
-  [0, 1], // Toronto  → Berlin
+  [0, 1], // Brampton → Schönefeld
   [0, 2],
   [0, 3],
   [1, 0],
@@ -139,6 +191,20 @@ export default function OfficeMap() {
   // Below this width the labels collide, so they become tap-to-reveal only.
   const showLabels = renderScale > 0.72;
 
+  const activeOffice = OFFICES.find((o) => o.id === active) ?? null;
+
+  // Place the address card over the map by converting the office's projected
+  // position into a percentage of the viewBox — the SVG scales as a unit, so
+  // percentages track it exactly. Cards near an edge are nudged inward rather
+  // than centred, so they never spill outside the map.
+  const cardPosition = (() => {
+    if (!activeOffice) return null;
+    const [x, y] = project(activeOffice.coordinates);
+    const leftPct = (x / WIDTH) * 100;
+    const shiftX = leftPct < 22 ? "-10%" : leftPct > 78 ? "-90%" : "-50%";
+    return { leftPct, topPct: (y / HEIGHT) * 100, shiftX };
+  })();
+
   return (
     <div ref={wrapRef} className="relative w-full overflow-hidden rounded-2xl border border-border bg-[#0b1a2e]">
       <ComposableMap
@@ -153,18 +219,35 @@ export default function OfficeMap() {
           {({ geographies }) =>
             geographies.map((geo) => {
               const isOperating = OPERATING_COUNTRIES.has(geo.properties.name);
+              const officeId = COUNTRY_TO_OFFICE.get(geo.properties.name);
               return (
                 <Geography
                   key={geo.rsmKey}
                   geography={geo}
-                  fill={isOperating ? "rgba(255,220,57,0.22)" : "#16324f"}
+                  // Makes each country addressable — handy when checking the
+                  // region-to-office mapping in the browser or in tests.
+                  data-country={geo.properties.name}
+                  onMouseEnter={() => officeId && setActive(officeId)}
+                  onMouseLeave={() => setActive(null)}
+                  // Tap on touch devices, where there is no hover.
+                  onClick={() => officeId && setActive(active === officeId ? null : officeId)}
+                  // The whole region lights up together, so it reads as one
+                  // territory served by one office rather than a single country.
+                  fill={
+                    !isOperating
+                      ? "#16324f"
+                      : active && officeId === active
+                        ? "rgba(255,220,57,0.42)"
+                        : "rgba(255,220,57,0.22)"
+                  }
                   stroke={isOperating ? "#FFDC39" : "#24476b"}
-                  strokeWidth={isOperating ? 1 : 0.4}
+                  strokeWidth={isOperating ? (officeId === active ? 1.4 : 1) : 0.4}
                   style={{
-                    default: { outline: "none" },
+                    default: { outline: "none", transition: "fill 180ms ease" },
                     hover: {
-                      fill: isOperating ? "rgba(255,220,57,0.32)" : "#1d4066",
+                      fill: isOperating ? "rgba(255,220,57,0.42)" : "#1d4066",
                       outline: "none",
+                      cursor: isOperating ? "pointer" : "default",
                     },
                     pressed: { outline: "none" },
                   }}
@@ -174,8 +257,10 @@ export default function OfficeMap() {
           }
         </Geographies>
 
-        {/* Animated route curves, drawn under the pins */}
-        <g fill="none" stroke="#FFDC39" strokeLinecap="round">
+        {/* Animated route curves, drawn under the pins. pointerEvents off so a
+            line crossing a country never steals the hover from it — the routes
+            are decoration and have nothing to reveal. */}
+        <g fill="none" stroke="#FFDC39" strokeLinecap="round" style={{ pointerEvents: "none" }}>
           {ROUTES.map(([from, to], i) => {
             const d = curvePath(
               project(OFFICES[from].coordinates),
@@ -260,7 +345,13 @@ export default function OfficeMap() {
                     delay: i * 0.35,
                     ease: "easeOut",
                   }}
-                  style={{ transformOrigin: "center", transformBox: "fill-box" }}
+                  // Decoration only — it expands well past the pin, so letting
+                  // it capture the pointer would blank out the country beneath.
+                  style={{
+                    transformOrigin: "center",
+                    transformBox: "fill-box",
+                    pointerEvents: "none",
+                  }}
                 />
                 <circle
                   r={5 * s}
@@ -289,28 +380,44 @@ export default function OfficeMap() {
                     {office.city}
                   </text>
                 )}
-                {isActive && (
-                  <text
-                    y={16 * s}
-                    textAnchor="middle"
-                    fill="#FFDC39"
-                    style={{
-                      fontSize: 9 * s,
-                      fontWeight: 600,
-                      paintOrder: "stroke",
-                      stroke: "#0b1a2e",
-                      strokeWidth: 3 * s,
-                      strokeLinejoin: "round",
-                    }}
-                  >
-                    {office.country}
-                  </text>
-                )}
               </motion.g>
             </Marker>
           );
         })}
       </ComposableMap>
+
+      {/* Address card. Positioned as a percentage of the SVG viewBox, so it
+          stays pinned to its office at any container width. pointer-events are
+          off so moving onto the card never counts as leaving the region. */}
+      <AnimatePresence>
+        {activeOffice && cardPosition && (
+          <motion.div
+            key={activeOffice.id}
+            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.97 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            className="pointer-events-none absolute z-10 w-56 rounded-lg border border-[#FFDC39]/40 bg-[#0b1a2e]/95 p-3 shadow-xl backdrop-blur-sm"
+            style={{
+              left: `${cardPosition.leftPct}%`,
+              top: `${cardPosition.topPct}%`,
+              transform: `translate(${cardPosition.shiftX}, calc(-100% - 14px))`,
+            }}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#FFDC39]">
+              {activeOffice.region}
+            </p>
+            <p className="mt-0.5 text-sm font-bold text-white">
+              {activeOffice.city}, {activeOffice.country}
+            </p>
+            <address className="mt-1.5 space-y-0.5 text-xs not-italic leading-relaxed text-slate-300">
+              {activeOffice.address.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </address>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Legend — in normal flow so it never overlaps the map on small screens */}
       <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 border-t border-white/10 px-4 py-3">
