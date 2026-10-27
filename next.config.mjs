@@ -1,33 +1,37 @@
 /** @type {import('next').NextConfig} */
-
-// The project builds in two shapes:
-//
-//   npm run build         → full Next.js app, API routes included. This is the
-//                           deployment that actually handles form submissions.
-//
-//   npm run build:static  → plain HTML/CSS/JS in out/, for STRATO's hosting,
-//                           which serves files but cannot run Node.
-//
-// BUILD_TARGET is set by scripts/build-static.mjs; nothing else sets it.
-const isStatic = process.env.BUILD_TARGET === "static";
-
 const nextConfig = {
   reactStrictMode: true,
 
-  ...(isStatic
-    ? {
-        output: "export",
+  // Hides the framework version from responses — one less thing telling a
+  // scanner exactly which advisories to try.
+  poweredByHeader: false,
 
-        // Next's image optimizer needs a server, so images ship as-is.
-        // The source files are pre-compressed to compensate.
-        images: { unoptimized: true },
-
-        // Emit about-us/index.html rather than about-us.html. Plain static
-        // hosts resolve /about-us/ to that index file natively; without this
-        // a direct visit or refresh on any page but the homepage 404s.
-        trailingSlash: true,
-      }
-    : {}),
+  // Security headers — served by Next.js itself now that the app runs as a
+  // single Node.js process behind Nginx.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // Stops the endpoints being framed into someone else's page —
+          // the setup for clickjacking a form.
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // Browsers must honour the declared Content-Type rather than
+          // sniffing it, which is how an uploaded file becomes a script.
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Full URL to our own pages, origin only to others, nothing
+          // when leaving HTTPS.
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // The site asks for none of these, so deny them outright.
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+          },
+        ],
+      },
+    ];
+    // HSTS is handled by Nginx — see the deployment guide.
+  },
 };
 
 export default nextConfig;

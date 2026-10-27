@@ -5,7 +5,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Providers from "@/components/Providers";
 import ScrollToTop from "@/components/ScrollToTop";
-import { company } from "@/lib/site";
+import { company, siteUrl } from "@/lib/site";
+import StructuredData from "@/components/StructuredData";
 
 // Body text — Inter
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -32,16 +33,56 @@ const libreFranklin = Libre_Franklin({
   variable: "--font-libre-franklin",
 });
 
+const siteTitle = `${company.shortName} | Best Logistics & Freight Forwarding`;
+
 export const metadata: Metadata = {
+  // Without metadataBase, Next resolves Open Graph image paths against
+  // localhost and every shared link renders with no preview image.
+  metadataBase: new URL(siteUrl),
   title: {
-    default: `${company.shortName} | Best Logistics & Freight Forwarding`,
+    default: siteTitle,
     template: `%s | ${company.shortName}`,
   },
   description: company.description,
+  applicationName: company.name,
+  // Applies to the homepage. Every other page MUST set its own canonical in
+  // its metadata — child pages inherit this one otherwise, which tells Google
+  // they are all duplicates of "/" and gets them dropped from the index.
+  alternates: { canonical: "/" },
   icons: {
     icon: "/favicon.png",
     shortcut: "/favicon.png",
     apple: "/favicon.png",
+  },
+  openGraph: {
+    type: "website",
+    // The site serves German by default; English is the same URL with a
+    // client-side switch, so there is one canonical locale to declare.
+    locale: "de_DE",
+    alternateLocale: ["en_GB"],
+    url: siteUrl,
+    siteName: company.name,
+    title: siteTitle,
+    description: company.description,
+    images: [
+      {
+        url: "/hero-port.jpg",
+        width: 1694,
+        height: 929,
+        alt: company.tagline,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: company.description,
+    images: ["/hero-port.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
 };
 
@@ -68,6 +109,7 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-screen flex-col font-sans">
+        <StructuredData />
         <Providers>
           <Navbar />
           <main className="flex-1">{children}</main>

@@ -5,18 +5,9 @@ import { Mail, MapPin } from "lucide-react";
 // `Phone` is unused while the phone number is disabled below — restore it
 // alongside that block.
 
-import { company, navLinks, getContactEmail } from "@/lib/site";
+import { company, navLinks, legalLinks, getContactEmail } from "@/lib/site";
 import { useApp } from "@/contexts/AppContext";
 import Logo from "@/components/shared/Logo";
-
-/* ─────────────────────────────────────────────────────────────────────────────
- * DISABLED — newsletter sign-up, 2026-08-19.
- * It wrote subscribers to MongoDB and has no destination now that the database
- * is gone. To restore: uncomment this import, the <NewsletterForm /> block
- * below, and src/app/api/subscribe/route.ts.
- *
- * import NewsletterForm from "@/components/NewsletterForm";
- * ───────────────────────────────────────────────────────────────────────── */
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * DISABLED — social media links, 2026-08-19.
@@ -98,7 +89,7 @@ export default function Footer() {
           <ul className="mt-4 space-y-2 text-sm">
             {localizedNavLinks.map((link) => (
               <li key={link.href}>
-                <Link href={link.href} className="hover:text-accent">
+                <Link href={link.href} className="inline-block py-1 hover:text-accent">
                   {link.label}
                 </Link>
               </li>
@@ -113,7 +104,7 @@ export default function Footer() {
           <ul className="mt-4 space-y-2 text-sm">
             {t.servicesList.slice(0, 5).map((s) => (
               <li key={s.slug}>
-                <Link href={`/services#${s.slug}`} className="hover:text-accent">
+                <Link href={`/services#${s.slug}`} className="inline-block py-1 hover:text-accent">
                   {s.title}
                 </Link>
               </li>
@@ -150,21 +141,26 @@ export default function Footer() {
             </li>
             */}
           </ul>
-          {/* DISABLED — newsletter sign-up, see the note at the top of this file.
-          <div className="mt-5">
-            <NewsletterForm />
-          </div>
-          */}
         </div>
       </div>
 
       <div className="border-t border-white/10">
-        <div className="flex flex-row items-center justify-center gap-3 py-6 text-xs text-slate-400 sm:flex-row">
+        {/* Imprint and privacy have to be reachable from every page of a German
+            business site, in no more than two clicks and under a label a
+            visitor recognises — hence the fixed wording, not a creative one. */}
+        <div className="container flex flex-col items-center justify-between gap-3 py-6 text-xs text-slate-400 sm:flex-row">
           <p>
             {t.footer.copyright
               .replace("{year}", String(new Date().getFullYear()))
               .replace("{name}", company.name)}
           </p>
+          <nav className="flex items-center gap-5">
+            {legalLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="inline-block py-1 hover:text-accent">
+                {t.footer[link.key]}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>

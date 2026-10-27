@@ -1,22 +1,10 @@
 import { NextResponse } from "next/server";
 import { preflight, withCors } from "@/lib/cors";
-import { sendCareerApplicationEmail } from "@/lib/email";
-import { uploadToOneDrive, isGraphConfigured } from "@/lib/msGraph";
+import { sendCareerApplicationEmail, sendCareerConfirmation, type MailLocale } from "@/lib/email";
+import { uploadToOneDrive, isGraphConfigured, isGraphMailConfigured } from "@/lib/msGraph";
 import { MAX_UPLOAD_BYTES, RESUME_MIME_TYPES, CAREER_FOLDER } from "@/lib/uploads";
-
-/* ─────────────────────────────────────────────────────────────────────────────
- * DISABLED — database persistence, removed 2026-08-19.
- *
- * Applications are no longer stored in MongoDB. The CV goes to Microsoft 365
- * (OneDrive) and the team gets an email containing a link to it, so the inbox
- * is the record. To restore the database, uncomment these imports and the
- * `CareerApplication.create(...)` block further down, and uncomment
- * src/lib/mongodb.ts and src/models/CareerApplication.ts.
- *
- * import { connectToDatabase } from "@/lib/mongodb";
- * import CareerApplication from "@/models/CareerApplication";
- * import { deliverSubmission } from "@/lib/submissions";
- * ───────────────────────────────────────────────────────────────────────── */
+import { rateLimit, clientIp } from "@/lib/rateLimit";
+import { isHoneypotFilled, HONEYPOT_FIELD } from "@/lib/honeypot";
 
 // Browser pre-flight for the cross-origin POST from the static site.
 export async function OPTIONS(request: Request) {
@@ -25,12 +13,32 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const limit = rateLimit("career", clientIp(request));
+    if (!limit.ok) {
+      return withCors(NextResponse.json(
+        { error: "Too many applications from this connection. Please try again in a few minutes." },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+      ), request);
+    }
+
     const formData = await request.formData();
+
+    // See the contact route — a bot gets the success wording, not a hint.
+    if (isHoneypotFilled(formData.get(HONEYPOT_FIELD))) {
+      console.warn("[career] Honeypot triggered — submission dropped.");
+      return withCors(NextResponse.json(
+        { message: "Thanks for applying! Our team will review your application and be in touch soon." },
+        { status: 201 }
+      ), request);
+    }
+
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const phone = String(formData.get("phone") ?? "").trim();
     const position = String(formData.get("position") ?? "").trim();
     const message = String(formData.get("message") ?? "").trim();
+    // See the contact route — the applicant is written to in their own language.
+    const locale: MailLocale = formData.get("locale") === "en" ? "en" : "de";
 
     const resumeEntry = formData.get("resume");
     const resume = resumeEntry instanceof File && resumeEntry.size > 0 ? resumeEntry : null;
@@ -66,9 +74,11 @@ export async function POST(request: Request) {
 
     // The CV is the point of the application, so unlike the contact photo a
     // failed upload is fatal here — without it there is nothing to review.
-    if (!isGraphConfigured()) {
+    if (!isGraphConfigured() || !isGraphMailConfigured()) {
       console.error(
-        "[career] Microsoft Graph is not configured — cannot store the CV."
+        "[career] Microsoft Graph is not fully configured — need storage credentials " +
+          "(MS_GRAPH_TENANT_ID/CLIENT_ID/CLIENT_SECRET + a destination) and " +
+          "MS_GRAPH_SENDER_EMAIL. Refusing the application rather than losing it."
       );
       return withCors(NextResponse.json(
         { error: "We couldn't submit your application right now. Please try again in a moment." },
@@ -90,6 +100,17 @@ export async function POST(request: Request) {
       resumeFileName: resume.name,
       resumeUrl,
     });
+
+    // The team has the application; the applicant's acknowledgement is a
+    // courtesy on top and must never turn a successful submission into an error.
+    try {
+      await sendCareerConfirmation(
+        { name, email, position, resumeFileName: resume.name },
+        locale
+      );
+    } catch (err) {
+      console.error("[career] Acknowledgement to the applicant failed:", err);
+    }
 
     return withCors(NextResponse.json(
       { message: "Thanks for applying! Our team will review your application and be in touch soon." },

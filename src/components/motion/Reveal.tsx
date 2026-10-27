@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import type { ReactNode } from "react";
 
 type Direction = "up" | "down" | "left" | "right" | "none";
@@ -31,8 +31,13 @@ export default function Reveal({
   className?: string;
   once?: boolean;
 }) {
+  // Framer drives transforms in JS, so the CSS prefers-reduced-motion block in
+  // globals.css cannot stop it — the hook is the only thing that does. Content
+  // still fades in; only the movement is dropped.
+  const reduceMotion = useReducedMotion();
+
   const variants: Variants = {
-    hidden: { opacity: 0, ...offset[direction] },
+    hidden: { opacity: 0, ...(reduceMotion ? {} : offset[direction]) },
     visible: {
       opacity: 1,
       x: 0,

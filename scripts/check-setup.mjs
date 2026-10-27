@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 /**
- * Connection checker for the Microsoft 365 and Resend setup.
+ * Connection checker for the Microsoft 365 setup.
  *
- *   npm run check          — test everything, no files sent, no email sent
+ *   npm run check           — test everything, no files sent, no email sent
  *   npm run check -- --live — also upload a real test file and send a real email
  *
  * Reads .env.local. Never prints secret values.
+ *
+ * Everything the live site needs goes through one Microsoft 365 app
+ * registration: Files.ReadWrite.All to file uploads, Mail.Send to send the
+ * notifications. This script exercises both with the same credentials the
+ * site will use, so a pass here means the site can do its job.
  */
 
 import { readFileSync, existsSync } from "node:fs";
@@ -15,7 +20,7 @@ import { resolve } from "node:path";
 const envPath = resolve(process.cwd(), ".env.local");
 if (!existsSync(envPath)) {
   console.error("✗ .env.local not found. Copy .env.local.example to .env.local and fill it in.");
-  process.exit(1);
+  quit(1);
 }
 for (const line of readFileSync(envPath, "utf8").split("\n")) {
   const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
@@ -36,6 +41,27 @@ const bad = (m) => { failed = true; console.log(`  \x1b[31m✗\x1b[0m ${m}`); };
 const info = (m) => console.log(`    \x1b[90m${m}\x1b[0m`);
 const head = (m) => console.log(`\n\x1b[1m${m}\x1b[0m`);
 
+/**
+ * Ends the run with the right exit status.
+ *
+ * Two things must be true at once: execution has to stop immediately (a failed
+ * sign-in must not be followed by checks that assume it worked), and the process
+ * must not call process.exit() while a fetch socket is still closing - on Windows
+ * that trips an assertion inside libuv and makes a working script look crashed.
+ *
+ * So quit() throws a sentinel that the try/catch at the bottom of this file
+ * swallows. Execution stops at the throw, exitCode carries the status, and Node
+ * shuts down on its own once the sockets are done.
+ */
+class Done extends Error {}
+
+function quit(code) {
+  process.exitCode = code;
+  throw new Done();
+}
+
+try {
+
 // ── 1. required settings present ────────────────────────────────────────────
 head("1. Settings in .env.local");
 
@@ -43,8 +69,7 @@ const required = [
   "MS_GRAPH_TENANT_ID",
   "MS_GRAPH_CLIENT_ID",
   "MS_GRAPH_CLIENT_SECRET",
-  "RESEND_API_KEY",
-  "RESEND_FROM_EMAIL",
+  "MS_GRAPH_SENDER_EMAIL",
   "CONTACT_TO_EMAIL",
 ];
 for (const key of required) {
@@ -72,11 +97,48 @@ if (env.MS_GRAPH_CLIENT_SECRET && /^[0-9a-f-]{36}$/i.test(env.MS_GRAPH_CLIENT_SE
 
 if (failed) {
   console.log("\nFix the above before continuing.\n");
-  process.exit(1);
+  quit(1);
 }
 
+// ── 2. legal pages ──────────────────────────────────────────────────────────
+// Checked here, BEFORE anything touches Microsoft, on purpose: filling these
+// in is a launch blocker unrelated to Graph, and every Microsoft section below
+// exits the script on failure. Run last, this check stays invisible until the
+// tenant is perfectly configured - which is exactly when nobody is looking for
+// it any more.
+head("2. Legal details (Impressum / Datenschutz)");
+
+{
+  // These are read out of the source file rather than the environment because
+  // that is where they live — and shipping an Impressum full of placeholders
+  // to a German business site is a legal problem, not a cosmetic one.
+  const siteSrc = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
+  // Matches `field: TBD,` and `field: [TBD],` at the start of a line, which is
+  // how every unfilled value in the `legal` block is written.
+  const placeholders = (siteSrc.match(/^\s+\w+:\s*\[?TBD\]?,/gm) ?? []).length;
+
+  if (placeholders === 0) {
+    ok("All legal details filled in");
+  } else {
+    bad(`${placeholders} legal detail(s) still set to TBD in src/lib/site.ts`);
+    info("Registered name, representatives, register court + number, VAT ID,");
+    info("and the person responsible for content must all be filled in before launch.");
+    info("They are rendered on /impressum and /datenschutz exactly as written.");
+  }
+
+  if (!env.NEXT_PUBLIC_SITE_URL) {
+    bad("NEXT_PUBLIC_SITE_URL is not set");
+    info("Without it the sitemap, canonical URLs and link-preview images all point at localhost.");
+  } else if (!/^https:\/\//.test(env.NEXT_PUBLIC_SITE_URL)) {
+    bad(`NEXT_PUBLIC_SITE_URL should start with https:// (got "${env.NEXT_PUBLIC_SITE_URL}")`);
+  } else {
+    ok(`Public URL: ${env.NEXT_PUBLIC_SITE_URL}`);
+  }
+}
+
+
 // ── 2. Microsoft sign-in ────────────────────────────────────────────────────
-head("2. Microsoft 365 sign-in");
+head("3. Microsoft 365 sign-in");
 
 let token;
 {
@@ -98,7 +160,7 @@ let token;
     bad(`Sign-in failed (${res.status}) — ${body.error_description?.split("\n")[0] ?? "unknown error"}`);
     if (body.error === "invalid_client") info("Wrong client secret, or you copied the Secret ID instead of the Value.");
     if (body.error === "unauthorized_client") info("Client ID does not match this tenant.");
-    process.exit(1);
+    quit(1);
   }
   token = body.access_token;
   ok("Signed in — tenant, client ID and secret all accepted");
@@ -107,7 +169,7 @@ let token;
 const authed = { Authorization: `Bearer ${token}` };
 
 // ── 3. find the destination drive ───────────────────────────────────────────
-head("3. Storage location");
+head("4. Storage location");
 
 let driveRoot;
 if (useSharePoint) {
@@ -122,7 +184,7 @@ if (useSharePoint) {
     info(`Looked for: https://${host}/${path}`);
     if (siteRes.status === 403) info("Permission missing — add Sites.ReadWrite.All and grant admin consent.");
     if (siteRes.status === 404) info("Check the hostname and site path match the URL in your browser.");
-    process.exit(1);
+    quit(1);
   }
   const site = await siteRes.json();
   ok(`Found site: ${site.displayName ?? path}`);
@@ -130,7 +192,7 @@ if (useSharePoint) {
   const driveRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drive`, { headers: authed });
   if (!driveRes.ok) {
     bad(`Could not open the document library (${driveRes.status})`);
-    process.exit(1);
+    quit(1);
   }
   const drive = await driveRes.json();
   ok(`Document library: ${drive.name}`);
@@ -144,14 +206,14 @@ if (useSharePoint) {
     bad(`OneDrive not reachable (${res.status})`);
     if (res.status === 404) info("That user has no OneDrive yet — sign in to onedrive.com once as them.");
     if (res.status === 403) info("Permission missing — add Files.ReadWrite.All and grant admin consent.");
-    process.exit(1);
+    quit(1);
   }
   ok("OneDrive reachable");
   driveRoot = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(env.MS_GRAPH_USER_EMAIL)}/drive`;
 }
 
 // ── 4. folders ──────────────────────────────────────────────────────────────
-head("4. Folder structure");
+head("5. Folder structure");
 
 async function ensureFolders(folderPath) {
   let parent = "";
@@ -176,10 +238,10 @@ async function ensureFolders(folderPath) {
 }
 
 const foldersOk = (await ensureFolders(careerFolder)) && (await ensureFolders(contactFolder));
-if (!foldersOk) process.exit(1);
+if (!foldersOk) quit(1);
 
 // ── 5. upload ───────────────────────────────────────────────────────────────
-head("5. File upload");
+head("6. File upload");
 
 if (!LIVE) {
   info("skipped — re-run with --live to upload a real test file");
@@ -198,7 +260,7 @@ if (!LIVE) {
   if (!sessionRes.ok) {
     bad(`Upload session failed (${sessionRes.status})`);
     info((await sessionRes.text()).slice(0, 300));
-    process.exit(1);
+    quit(1);
   }
   const { uploadUrl } = await sessionRes.json();
 
@@ -213,7 +275,7 @@ if (!LIVE) {
   if (!put.ok) {
     bad(`Upload failed (${put.status})`);
     info((await put.text()).slice(0, 300));
-    process.exit(1);
+    quit(1);
   }
   const item = await put.json();
   ok(`Uploaded ${name}`);
@@ -221,67 +283,71 @@ if (!LIVE) {
 }
 
 // ── 6. email ────────────────────────────────────────────────────────────────
-head("6. Email (Resend)");
+head("7. Email (Microsoft 365)");
 
 {
-  const fromDomain = env.RESEND_FROM_EMAIL.split("@")[1];
+  const sender = env.MS_GRAPH_SENDER_EMAIL;
+  const recipients = (env.CONTACT_TO_EMAIL ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const careerRecipients = (env.CAREER_TO_EMAIL ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
-  // A send-only key (the correct kind for this site) cannot list domains, so
-  // treat Resend's "restricted" response as proof the key is valid — the only
-  // real test for such a key is actually sending, which --live does.
-  const probe = await fetch("https://api.resend.com/domains", {
-    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` },
-  });
-  const probeBody = await probe.json().catch(() => ({}));
+  // The sender must be a real, licensed mailbox — Graph will not send as an
+  // address that only exists as an alias or a distribution list.
+  const mailboxRes = await fetch(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}?$select=displayName,mail,userPrincipalName`,
+    { headers: authed }
+  );
 
-  let domainStatusKnown = false;
-
-  if (probe.ok) {
-    ok("API key accepted (full access)");
-    const list = probeBody.data ?? [];
-    const match = list.find((d) => d.name === fromDomain);
-    domainStatusKnown = true;
-    if (!match) {
-      bad(`Domain "${fromDomain}" is not registered in Resend`);
-      info(`Registered: ${list.map((d) => d.name).join(", ") || "none"}`);
-    } else if (match.status !== "verified") {
-      bad(`Domain "${fromDomain}" is not verified yet (status: ${match.status})`);
-      info("Add the DNS records at STRATO, then press Verify in Resend.");
-    } else {
-      ok(`Domain "${fromDomain}" is verified`);
-    }
-  } else if (probeBody.name === "restricted_api_key") {
-    ok("API key accepted (send-only — the correct kind for this site)");
-    info(`Cannot read domain status with a send-only key; sending is the real test.`);
+  if (mailboxRes.ok) {
+    const mailbox = await mailboxRes.json();
+    ok(`Sender mailbox exists: ${mailbox.displayName ?? sender}`);
+  } else if (mailboxRes.status === 403) {
+    // Reading the directory needs User.Read.All, which the site does not use.
+    // Not being able to look the mailbox up says nothing about Mail.Send.
+    info("Cannot read the directory (User.Read.All not granted) — skipping the mailbox lookup.");
+    info("This is fine: the site never reads the directory. --live is the real test.");
   } else {
-    bad(`Resend key rejected (${probe.status}) — ${probeBody.message ?? "unknown error"}`);
-    process.exit(1);
+    bad(`Sender mailbox "${sender}" not found (${mailboxRes.status})`);
+    info("MS_GRAPH_SENDER_EMAIL must be a licensed mailbox in this tenant, not an alias or a group.");
   }
 
-  const recipients = (env.CONTACT_TO_EMAIL ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  info(`Enquiries → ${recipients.join(", ") || "(none set)"}`);
+  info(`Applications → ${(careerRecipients.length ? careerRecipients : recipients).join(", ") || "(none set)"}${careerRecipients.length ? "" : "  [falling back to CONTACT_TO_EMAIL]"}`);
 
   if (!LIVE) {
     info("send test skipped — re-run with --live to send a real email");
   } else {
-    const send = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: `Flink Freight <${env.RESEND_FROM_EMAIL}>`,
-        to: recipients,
-        subject: "Flink Freight — setup check",
-        html: "<p>If you can read this, the website can send email. Safe to delete.</p>",
-      }),
-    });
-    const sendBody = await send.json().catch(() => ({}));
-    if (!send.ok) {
-      bad(`Test email failed (${send.status}) — ${sendBody.message ?? ""}`);
-      if (/domain is not verified/i.test(sendBody.message ?? "")) {
-        info(`"${fromDomain}" is not verified in Resend yet. Add its DNS records at STRATO and press Verify.`);
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`,
+      {
+        method: "POST",
+        headers: { ...authed, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: {
+            subject: "Flink Freight — setup check",
+            body: {
+              contentType: "HTML",
+              content: "<p>If you can read this, the website can send email. Safe to delete.</p>",
+            },
+            toRecipients: recipients.map((address) => ({ emailAddress: { address } })),
+          },
+          saveToSentItems: true,
+        }),
       }
+    );
+
+    if (res.ok) {
+      ok(`Test email sent to ${recipients.join(", ")} — check the inbox (and the spam folder)`);
     } else {
-      ok(`Test email sent to ${recipients.join(", ")} — check the inbox (and spam)`);
-      if (!domainStatusKnown) info("Delivery proves the domain is verified.");
+      const detail = await res.text();
+      bad(`Test email failed (${res.status})`);
+      if (res.status === 403) {
+        info("Mail.Send is missing, or admin consent was never granted. Entra ID →");
+        info("App registrations → your app → API permissions → Mail.Send (Application) → Grant admin consent.");
+      }
+      if (res.status === 404) {
+        info(`No mailbox for "${sender}". It must be licensed for Exchange Online.`);
+      }
+      info(detail.slice(0, 300));
     }
   }
 }
@@ -292,4 +358,10 @@ console.log(
     ? "\n\x1b[31mSome checks failed.\x1b[0m See the notes above.\n"
     : `\n\x1b[32mAll checks passed.\x1b[0m${LIVE ? "" : " Re-run with --live for a real upload and email.\n"}\n`
 );
-process.exit(failed ? 1 : 0);
+quit(failed ? 1 : 0);
+
+} catch (err) {
+  // Done just means quit() was called - the reason was already printed.
+  if (!(err instanceof Done)) throw err;
+}
+

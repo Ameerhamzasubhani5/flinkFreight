@@ -75,9 +75,33 @@
   }
   html {
     scroll-behavior: smooth;
+    /* The scroll-into-view reveals start their children offset by 28px, which
+       sticks out past the right edge until the animation lands. Without this a
+       phone shows a horizontal scrollbar and rubber-bands sideways while the
+       page settles. Vertical scrolling is unaffected. */
+    overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Respect the OS "reduce motion" setting. The reveals slide and fade on
+     every section, which is exactly the kind of motion that triggers nausea
+     for people with vestibular disorders (WCAG 2.3.3). Content still appears —
+     only the movement is removed. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
   h1, h2, h3, h4 {
     @apply font-bold tracking-tight text-primary;

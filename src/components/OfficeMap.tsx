@@ -59,7 +59,7 @@ const OFFICES: Office[] = [
     region: "Europe",
     city: "Schönefeld",
     country: "Germany",
-    address: ["Willy-Brand-Platz 2", "12529 Schönefeld, Germany"],
+    address: ["Willy-Brandt-Platz 2", "12529 Schönefeld, Germany"],
     coordinates: [13.5225, 52.3889],
   },
   {
@@ -429,7 +429,10 @@ export default function OfficeMap() {
             onMouseLeave={() => setActive(null)}
             onClick={() => setActive(active === o.id ? null : o.id)}
             className={cn(
-              "flex items-center gap-1.5 text-xs transition-colors",
+              // py-1.5 lifts these from ~16px to a 24px+ touch target. They are
+              // the only way to reach an office on a phone, where the map's
+              // hover interaction does not exist at all.
+              "flex items-center gap-1.5 py-1.5 text-xs transition-colors",
               active === o.id ? "text-[#FFDC39]" : "text-slate-300 hover:text-white"
             )}
           >

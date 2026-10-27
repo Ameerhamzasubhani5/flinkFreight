@@ -221,6 +221,8 @@ const de = {
       "{tagline} Ein umfassender Ansatz für globale Logistik mit über {years} Jahren Erfahrung.",
     copyright: "© {year} {name}. Alle Rechte vorbehalten.",
     builtWith: "Erstellt mit Next.js & shadcn/ui.",
+    imprint: "Impressum",
+    privacy: "Datenschutz",
   },
 
   faq: {
@@ -611,6 +613,8 @@ const en: typeof de = {
     tagline: "{tagline} A full-service approach to global logistics with over {years} years of experience.",
     copyright: "© {year} {name}. All rights reserved.",
     builtWith: "Built with Next.js & shadcn/ui.",
+    imprint: "Legal Notice",
+    privacy: "Privacy Policy",
   },
 
   faq: {

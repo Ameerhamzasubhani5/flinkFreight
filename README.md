@@ -1,158 +1,164 @@
 # Flink Freight Logistics
 
-Marketing website for Flink Freight Logistics, built with **Next.js 14 (App Router)**,
-**TypeScript**, **Tailwind CSS** and **MongoDB**.
+Bilingual (German / English) marketing website for Flink Freight Logistics,
+built with **Next.js 14 (App Router)**, **TypeScript** and **Tailwind CSS**.
 
-Mostly static content with four dynamic pieces: the contact form, the career
-application form, the newsletter sign-up, and a health/keep-alive endpoint.
-The whole site is bilingual (German / English), switchable from the navbar.
+Eight pages plus two form handlers, all served from a single Node.js process.
+No database — a submission's file goes to SharePoint and the team gets an email
+with a link to it, so **the inbox is the record**.
+
+> **Deploying, configuring or handing this over?**
+> Everything is in **[`DEPLOYMENT.md`](DEPLOYMENT.md)** — architecture, Microsoft
+> 365 setup, the STRATO V-Server provisioning, Nginx, PM2, verification,
+> handover and troubleshooting. It is the only document you need.
 
 ## Pages
 
-| Route        | Contents                                                        |
-| ------------ | --------------------------------------------------------------- |
-| `/`          | Home — hero, services overview, why-us, values, FAQ, CTA         |
-| `/about-us`  | Company story, mission, vision, values                           |
-| `/services`  | Ocean, Air, Ground, Warehousing, Customs, Supply Chain           |
-| `/carriers`  | Carrier partnership info & onboarding steps                      |
-| `/career`    | Careers pitch + application form with resume upload              |
-| `/contact`   | Contact form (package dimensions, weight, photo upload) + map    |
+| Route          | Contents                                                      |
+| -------------- | ------------------------------------------------------------- |
+| `/`            | Home — hero, services, why-us, values, FAQ, CTA                |
+| `/about-us`    | Company story, mission, vision, values                         |
+| `/services`    | Ocean, Air, Ground, Warehousing, Customs, Supply Chain         |
+| `/carriers`    | Carrier partnership info & onboarding steps                    |
+| `/career`      | Careers pitch + application form with CV upload                |
+| `/contact`     | Contact form (dimensions, weight, photo upload) + office map   |
+| `/impressum`   | Imprint — § 5 DDG. `noindex`, linked from the footer           |
+| `/datenschutz` | Privacy policy — Art. 13 GDPR. `noindex`, linked from footer   |
+
+Plus `robots.txt` and `sitemap.xml`, both generated at build time.
 
 ## Tech Stack
 
-| Concern      | Choice                                        |
-| ------------ | --------------------------------------------- |
-| Framework    | Next.js 14 (App Router)                       |
-| Language     | TypeScript                                    |
-| Styling      | Tailwind CSS + shadcn/ui primitives           |
-| Animation    | Framer Motion                                 |
-| Database     | MongoDB via Mongoose                          |
-| Email        | Resend                                        |
-| File storage | Microsoft 365 OneDrive via Graph API          |
-| Hosting      | Vercel (CI/CD in `.github/workflows/deploy.yml`) |
+| Concern      | Choice                                 |
+| ------------ | -------------------------------------- |
+| Framework    | Next.js 14 (App Router)                |
+| Language     | TypeScript                             |
+| Styling      | Tailwind CSS + shadcn/ui primitives    |
+| Animation    | Framer Motion                          |
+| Email        | Microsoft 365 via Graph `sendMail`     |
+| File storage | SharePoint via Graph                   |
+| Hosting      | STRATO V-Server (Nginx + PM2 + Node.js)|
 
 ## Getting Started
 
 ```bash
-# 1. Install dependencies (the repo pins legacy-peer-deps via .npmrc)
-npm install
-
-# 2. Configure environment
+npm install                  # .npmrc pins legacy-peer-deps
 cp .env.local.example .env.local
-# then fill in the values — see the comments in that file
-
-# 3. Run the dev server
+# fill in the values — each is documented inline in that file
+npm run check                # verify the Microsoft 365 setup
 npm run dev
 ```
 
-Open <http://localhost:3000>.
+Open <http://localhost:3000>. Every page renders without any configuration —
+only the two forms need credentials.
 
-## Environment Variables
+## Scripts
 
-Copy `.env.local.example` → `.env.local` and fill in. Every variable is
-documented inline in that file.
+| Command | Does |
+| --- | --- |
+| `npm run dev` | Dev server |
+| `npm run build` | Production build — pages + API routes |
+| `npm run start` | Start the production server (port 3000) |
+| `npm run check` | Verifies Microsoft 365 config, storage, folders, legal details |
+| `npm run check -- --live` | Also uploads a real test file and sends a real email |
+| `npm run lint` | ESLint |
+| `node scripts/find-sharepoint.mjs` | Lists visible SharePoint sites and their exact env values |
 
-| Variable                 | Required | Purpose                                              |
-| ------------------------ | -------- | ---------------------------------------------------- |
-| `MONGODB_URI`            | Yes      | MongoDB connection string (Atlas M0 free tier is fine) |
-| `RESEND_API_KEY`         | Yes      | Sends form notifications to the team                  |
-| `RESEND_FROM_EMAIL`      | Yes      | Verified "from" address                               |
-| `CONTACT_TO_EMAIL`       | Yes      | Inbox receiving contact-form submissions              |
-| `CAREER_TO_EMAIL`        | No       | Inbox for job applications (falls back to `CONTACT_TO_EMAIL`) |
-| `MS_GRAPH_TENANT_ID`     | No       | Microsoft 365 tenant (Entra ID)                       |
-| `MS_GRAPH_CLIENT_ID`     | No       | Registered app's client ID                            |
-| `MS_GRAPH_CLIENT_SECRET` | No       | Registered app's client secret                        |
-| `MS_GRAPH_USER_EMAIL`    | No       | Mailbox whose OneDrive receives uploads               |
+## Architecture
 
-Set the same variables in **Vercel → Project → Settings → Environment Variables**
-before the first production deploy.
+```
+STRATO V-Server
+┌────────────────────────────────┐
+│  Nginx (443) → Node.js (3000) │
+│  Pages + /api/contact          │
+│          + /api/career         │
+└────────────┬───────────────────┘
+             │
+             ▼
+Microsoft 365: SharePoint + sendMail
+```
 
-If the Microsoft Graph variables are left blank, uploaded resumes and shipment
-photos are stored in MongoDB instead. Nothing is lost — the files simply stay in
-the database until Graph is configured.
-
-> **Configure Graph before going live if you expect any volume.** The Atlas M0
-> free tier caps total storage at **512MB**, and uploads are capped at 5MB each,
-> so the fallback path can fill a free cluster after roughly a hundred
-> submissions. With Graph configured, files go to OneDrive and only a link is
-> stored, which keeps the database tiny.
+Everything runs on one server. Nginx handles TLS and proxies to the Next.js
+process managed by PM2. `DEPLOYMENT.md` explains the full setup.
 
 ## API Routes
 
-| Route                 | Body            | Behaviour                                            |
-| --------------------- | --------------- | ---------------------------------------------------- |
-| `POST /api/contact`   | `multipart/form-data` | Stores enquiry + emails the team. Optional photo (≤5MB, JPG/PNG/WEBP) and package L/W/H/weight. |
-| `POST /api/career`    | `multipart/form-data` | Stores application + emails the team. Resume required (≤5MB, PDF/DOC/DOCX). |
-| `POST /api/subscribe` | `{ email }`     | Stores a newsletter subscriber (duplicates ignored). |
-| `GET /api/health`     | —               | Pings the database. `200` when reachable, `503` when not. |
+| Route | Body | Behaviour |
+| --- | --- | --- |
+| `POST /api/contact` | `multipart/form-data` | Notifies the team **and** acknowledges to the visitor. Optional photo (≤5MB, JPG/PNG/WEBP) + package L/W/H/weight. A failed photo upload does **not** block the enquiry. |
+| `POST /api/career` | `multipart/form-data` | Notifies the team **and** acknowledges to the applicant. CV required (≤5MB, PDF/DOC/DOCX). A failed CV upload **does** fail the request — an application without a CV is not reviewable. |
 
-### Delivery guarantee
+Each submission sends **two** emails: the notification to the team (English,
+Reply-To the visitor) and an acknowledgement to the person who submitted (in
+their own language, Reply-To the team inbox). The notification decides the HTTP
+response; the acknowledgement is best-effort and only logged on failure, so a
+bounced courtesy email can never tell a customer their enquiry was lost.
+See `DEPLOYMENT.md` Part 1.
 
-The contact and career routes write to MongoDB **and** send an email, in
-parallel. A submission is accepted if **either** channel succeeds, so a database
-outage or an email misconfiguration can never silently lose a customer enquiry
-or a job application. Only if both fail does the visitor get an error asking
-them to retry. Partial deliveries are logged with a `partial delivery` warning
-so they can be reconciled.
+Both are guarded by:
 
-## Keeping the free MongoDB cluster alive
+- **Rate limit** (`src/lib/rateLimit.ts`) — 5 per IP per 10 minutes, checked
+  before the body is parsed. Exact with a single PM2 instance.
+- **Honeypot** (`src/lib/honeypot.ts`) — a hidden field real visitors never see.
+  When filled, the submission is dropped and the *success* message returned, so
+  a bot gets no signal to adapt to.
 
-Atlas pauses **M0 (free tier)** clusters after **60 days with no connections**,
-and a paused cluster has to be resumed by hand from the Atlas UI.
+## Environment Variables
 
-`vercel.json` registers a Vercel Cron job that calls `GET /api/health` once a
-day at 06:00 UTC. That single daily connection resets the inactivity timer, so
-the cluster is never paused and never needs a manual resume.
+Documented inline in `.env.local.example`; the deployment-specific details are in
+`DEPLOYMENT.md` Part 6.3. The variable that catches people out:
 
-Two things to check on the Atlas side after deploying:
-
-1. **Network Access → add `0.0.0.0/0`.** Vercel's functions have no fixed IP
-   address, so an IP allowlist will block the site intermittently.
-2. **Confirm the cron is running** — Vercel → Project → Cron Jobs. It should
-   show a daily run against `/api/health` returning 200.
-
-`GET /api/health` also works as an uptime-monitor target if you want alerting
-(UptimeRobot, Better Stack, etc.) — it returns 503 whenever the database is
-unreachable.
+| Variable | Gotcha |
+| --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | **Compiled in at build time.** Unset means sitemap and link previews point at localhost |
 
 ## Project Structure
 
 ```
 src/
   app/
-    api/career/route.ts      # job application handler (resume upload)
-    api/contact/route.ts     # contact form handler (photo + dimensions)
-    api/subscribe/route.ts   # newsletter handler
-    api/health/route.ts      # DB health check + Atlas keep-alive
-    about-us/ carriers/ career/ contact/ services/
-    page.tsx                 # home
-    layout.tsx
-    globals.css
+    api/contact/route.ts     # enquiry: upload photo → email team
+    api/career/route.ts      # application: upload CV → email team
+    {about-us,services,carriers,career,contact}/
+    impressum/ datenschutz/  # legal pages
+    robots.ts sitemap.ts     # generated at /robots.txt and /sitemap.xml
+    page.tsx layout.tsx globals.css
   components/
     ui/                      # shadcn/ui primitives
-    motion/                  # Reveal, Stagger, HoverLift wrappers
-    shared/                  # Logo, SectionHeading, ServiceCard, ...
+    motion/                  # Reveal, Stagger, HoverLift
+    shared/                  # Logo, SectionHeading, ServiceCard, LegalPage, Honeypot, …
     Navbar.tsx Footer.tsx ContactForm.tsx CareerForm.tsx OfficeMap.tsx
-  contexts/AppContext.tsx    # locale + theme
+  contexts/AppContext.tsx    # locale + theme, and the <html lang> attribute
   lib/
-    site.ts                  # company details + nav structure
-    translations.ts          # all visible copy (DE + EN)
-    mongodb.ts               # cached, serverless-safe Mongoose connection
-    email.ts                 # Resend templates
-    msGraph.ts               # OneDrive upload via Microsoft Graph
-    submissions.ts           # store-or-email delivery strategy
-    uploads.ts               # shared file-size / MIME constraints
-  models/                    # Contact, CareerApplication, Subscriber schemas
+    site.ts                  # company details, legal identity, nav, siteUrl
+    translations.ts          # ALL visible marketing copy, DE + EN
+    legalContent.ts          # imprint + privacy text, DE + EN
+    msGraph.ts               # Graph client: uploads AND sendMail
+    email.ts                 # the two notification templates
+    formEndpoint.ts          # API URL resolver (same-origin)
+    uploads.ts               # size/MIME limits + folder paths
+    rateLimit.ts             # per-IP throttle (server only)
+    honeypot.ts              # shared bot-trap field name
+scripts/
+  check-setup.mjs            # npm run check
+  find-sharepoint.mjs        # site discovery
+public/                      # static assets (images, fonts)
 ```
 
-Visible copy lives in `lib/translations.ts` (both languages), not in the
-components — that is the file to edit for wording changes.
+**All visible marketing copy is in `src/lib/translations.ts`** (both languages),
+not in components — that is the file to edit for wording changes. Legal copy is
+kept separately in `src/lib/legalContent.ts`, because changing it should be a
+considered act rather than a drive-by edit.
 
-## Deployment
+## Things that break silently
 
-Pushing to `main` runs lint → typecheck → build, then deploys to Vercel
-production. Any other branch deploys to a preview URL. See
-`.github/workflows/deploy.yml`.
+- **The Microsoft client secret expires** (24 months max). Uploads and email
+  both stop while the site keeps looking healthy. Diarise the expiry.
+- **`NEXT_PUBLIC_SITE_URL` wrong at build time** —
+  nothing errors; the sitemap points at localhost.
+- **Adding any third-party script** makes the privacy policy inaccurate and most
+  likely requires a consent banner. There are none today, which is why the site
+  needs no cookie banner.
 
-Required GitHub secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`,
-`MONGODB_URI`.
+Unfilled legal details are the one failure mode that is *not* silent — they
+render as red boxes on the live Impressum, deliberately.

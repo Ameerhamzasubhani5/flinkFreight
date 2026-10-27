@@ -1,22 +1,10 @@
 import { NextResponse } from "next/server";
 import { preflight, withCors } from "@/lib/cors";
-import { sendContactEmail } from "@/lib/email";
+import { sendContactEmail, sendContactConfirmation, type MailLocale } from "@/lib/email";
 import { uploadToOneDrive, isGraphConfigured } from "@/lib/msGraph";
 import { MAX_UPLOAD_BYTES, IMAGE_MIME_TYPES, CONTACT_FOLDER } from "@/lib/uploads";
-
-/* ─────────────────────────────────────────────────────────────────────────────
- * DISABLED — database persistence, removed 2026-08-19.
- *
- * Enquiries are no longer stored in MongoDB. The photo goes to Microsoft 365
- * (OneDrive) and the team gets an email containing a link to it, so the inbox
- * is the record. To restore the database, uncomment these imports and the
- * `Contact.create(...)` block further down, and uncomment src/lib/mongodb.ts
- * and src/models/Contact.ts.
- *
- * import { connectToDatabase } from "@/lib/mongodb";
- * import Contact from "@/models/Contact";
- * import { deliverSubmission } from "@/lib/submissions";
- * ───────────────────────────────────────────────────────────────────────── */
+import { rateLimit, clientIp } from "@/lib/rateLimit";
+import { isHoneypotFilled, HONEYPOT_FIELD } from "@/lib/honeypot";
 
 function toNumber(value: FormDataEntryValue | null): number | undefined {
   if (typeof value !== "string" || value.trim() === "") return undefined;
@@ -31,12 +19,37 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // Throttle before reading the body — an abusive caller should not get a
+    // multipart parse (and a possible 5MB upload) out of us on every attempt.
+    const limit = rateLimit("contact", clientIp(request));
+    if (!limit.ok) {
+      return withCors(NextResponse.json(
+        { error: "Too many messages from this connection. Please try again in a few minutes." },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+      ), request);
+    }
+
     const formData = await request.formData();
+
+    // Bot check. Answer exactly as a success would look: a bot that gets an
+    // error learns to work around the field, one that gets "sent" does not.
+    if (isHoneypotFilled(formData.get(HONEYPOT_FIELD))) {
+      console.warn("[contact] Honeypot triggered — submission dropped.");
+      return withCors(NextResponse.json(
+        { message: "Thanks for reaching out! We'll get back to you soon." },
+        { status: 201 }
+      ), request);
+    }
+
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const phone = String(formData.get("phone") ?? "").trim();
     const subject = String(formData.get("subject") ?? "").trim();
     const message = String(formData.get("message") ?? "").trim();
+    // Which language the visitor filled the form in, so the acknowledgement
+    // goes out in that language. Anything unexpected falls back to German,
+    // which is the site's default locale.
+    const locale: MailLocale = formData.get("locale") === "en" ? "en" : "de";
 
     const dimensions = {
       length: toNumber(formData.get("length")),
@@ -101,6 +114,15 @@ export async function POST(request: Request) {
     // With no database, the email is the only record — so a failure here has
     // to reach the visitor, otherwise the enquiry is silently lost.
     await sendContactEmail({ name, email, phone, subject, message, dimensions, imageUrl });
+
+    // The team now has the enquiry, so it is safe. The acknowledgement to the
+    // visitor is a courtesy on top: if it fails we log it and still report
+    // success, because the submission genuinely did succeed.
+    try {
+      await sendContactConfirmation({ name, email, subject, message }, locale);
+    } catch (err) {
+      console.error("[contact] Acknowledgement to the visitor failed:", err);
+    }
 
     return withCors(NextResponse.json(
       { message: "Thanks for reaching out! We'll get back to you soon." },

@@ -37,7 +37,8 @@ export default function ServiceCard({
           <p className="mt-2 text-sm text-muted-foreground">{service.short}</p>
           <Link
             href={`${href}#${service.slug}`}
-            className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary transition-colors hover:text-accent"
+            // py-1 takes this card CTA from 20px to a 24px+ touch target.
+            className="mt-4 inline-flex items-center gap-1 py-1 text-sm font-semibold text-primary transition-colors hover:text-accent"
           >
             {t.services.learnMore}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

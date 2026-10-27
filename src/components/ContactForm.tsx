@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CheckCircle2, AlertCircle, Upload, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/contexts/AppContext";
 import { formEndpoint } from "@/lib/formEndpoint";
 import { MAX_UPLOAD_BYTES, IMAGE_MIME_TYPES, IMAGE_ACCEPT } from "@/lib/uploads";
+import Honeypot from "@/components/shared/Honeypot";
+import { HONEYPOT_FIELD } from "@/lib/honeypot";
 
 const initial = {
   name: "",
@@ -24,9 +26,10 @@ const initial = {
 };
 
 export default function ContactForm() {
-  const { t } = useApp();
+  const { t, locale } = useApp();
   const [form, setForm] = useState(initial);
   const [image, setImage] = useState<File | null>(null);
+  const honeypotRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -65,6 +68,9 @@ export default function ContactForm() {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
       if (image) body.append("image", image);
+      body.append(HONEYPOT_FIELD, honeypotRef.current?.value ?? "");
+      // So the acknowledgement email reaches them in the language they used.
+      body.append("locale", locale);
 
       const res = await fetch(formEndpoint("/api/contact"), { method: "POST", body });
       const data = await res.json();
@@ -83,6 +89,7 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      <Honeypot ref={honeypotRef} />
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="name">{cf.nameLbl}</Label>

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import type { ReactNode } from "react";
 
 const containerVariants: Variants = {
@@ -17,6 +17,13 @@ const itemVariants: Variants = {
     y: 0,
     transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
   },
+};
+
+// Same list, with the vertical travel removed - see Reveal.tsx for why the
+// CSS media query alone is not enough.
+const reducedItemVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.3 } },
 };
 
 /**
@@ -52,8 +59,10 @@ export function StaggerItem({
   children: ReactNode;
   className?: string;
 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <motion.div className={className} variants={itemVariants}>
+    <motion.div className={className} variants={reduceMotion ? reducedItemVariants : itemVariants}>
       {children}
     </motion.div>
   );

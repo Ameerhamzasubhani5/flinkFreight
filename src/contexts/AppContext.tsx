@@ -23,6 +23,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const savedLocale = localStorage.getItem("ff-locale") as Locale | null;
     if (savedLocale === "de" || savedLocale === "en") {
       setLocaleState(savedLocale);
+      // Keep <html lang> honest — the server renders "de" (the default), so
+      // a visitor restored to English needs the attribute corrected or screen
+      // readers announce English copy with German pronunciation.
+      document.documentElement.lang = savedLocale;
     }
 
     const savedTheme = localStorage.getItem("ff-theme") as Theme | null;
@@ -35,6 +39,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   function setLocale(l: Locale) {
     setLocaleState(l);
     localStorage.setItem("ff-locale", l);
+    document.documentElement.lang = l;
   }
 
   function setTheme(t: Theme) {

@@ -67,8 +67,12 @@ export default function Navbar() {
       <div className="container flex h-20 items-center justify-between">
         <Logo variant={scrolled ? "icon" : "full"} />
 
-        {/* Desktop nav */}
-        <nav className="hidden items-center gap-6 md:flex">
+        {/* Desktop nav.
+            Shown from lg (1024px), not md (768px): the six links plus the CTA
+            button need ~860px, so at exactly 768px — iPad mini portrait — the
+            row overflowed the viewport by ~117px and the whole page scrolled
+            sideways. The hamburger below covers everything under lg. */}
+        <nav className="hidden items-center gap-6 lg:flex">
           {navItems.map((link) => (
             <Link
               key={link.href}
@@ -121,8 +125,8 @@ export default function Navbar() {
           </Button>
         </nav>
 
-        {/* Mobile controls + hamburger */}
-        <div className="flex items-center gap-1 md:hidden">
+        {/* Mobile controls + hamburger — must mirror the nav breakpoint above */}
+        <div className="flex items-center gap-1 lg:hidden">
           <Button
             variant="ghost"
             size="icon"
