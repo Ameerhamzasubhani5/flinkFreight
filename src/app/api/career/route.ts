@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { preflight, withCors } from "@/lib/cors";
 import { sendCareerApplicationEmail, sendCareerConfirmation, type MailLocale } from "@/lib/email";
 import { uploadToOneDrive, isGraphConfigured, isGraphMailConfigured } from "@/lib/msGraph";
-import { MAX_UPLOAD_BYTES, RESUME_MIME_TYPES, CAREER_FOLDER } from "@/lib/uploads";
+import {
+  MAX_UPLOAD_BYTES,
+  RESUME_MIME_TYPES,
+  CAREER_FOLDER,
+  resumeFormat,
+  storedUploadName,
+  tooLongField,
+} from "@/lib/uploads";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { isHoneypotFilled, HONEYPOT_FIELD } from "@/lib/honeypot";
 
@@ -50,7 +57,21 @@ export async function POST(request: Request) {
       ), request);
     }
 
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    // Allowlist, not "anything except whitespace and @". The old pattern
+    // accepted `a?cc=attacker@evil.example&body=...`, which then survived
+    // HTML escaping into the mailto: href of the staff notification and
+    // pre-filled a reply composer with attacker-chosen recipients.
+    const overLong = tooLongField({ name, email, phone, position, message });
+    if (overLong) {
+      return withCors(NextResponse.json(
+        { error: `That ${overLong.field} is too long (maximum ${overLong.limit} characters).` },
+        { status: 400 }
+      ), request);
+    }
+
+    const emailOk = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(
+      email
+    );
     if (!emailOk) {
       return withCors(NextResponse.json(
         { error: "Please provide a valid email address." },
@@ -87,7 +108,29 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await resume.arrayBuffer());
-    const uploaded = await uploadToOneDrive(buffer, resume.name, CAREER_FOLDER);
+
+    // The MIME check above only tested what the client CLAIMED. This tests the
+    // bytes, structurally. Without it, "resume=@shell.sh;type=application/pdf"
+    // put an arbitrary file into the CV folder for a colleague to open.
+    const format = resumeFormat(buffer);
+    if (!format) {
+      console.warn(
+        `[career] Upload rejected: declared "${resume.type}" but the content is not a PDF or Word document.`
+      );
+      return withCors(NextResponse.json(
+        { error: "That file does not look like a PDF or Word document. Please upload your CV as a PDF or DOCX." },
+        { status: 400 }
+      ), request);
+    }
+
+    // Store it under OUR name with the extension the bytes earned, not the
+    // caller's — the extension is what decides how a colleague's machine opens
+    // the file, so it must follow the detected format.
+    const uploaded = await uploadToOneDrive(
+      buffer,
+      storedUploadName(resume.name, format),
+      CAREER_FOLDER
+    );
     const resumeUrl = uploaded.webUrl;
 
     // With no database, the email is the only record of the application.

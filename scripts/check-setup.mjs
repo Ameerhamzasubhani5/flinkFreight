@@ -17,11 +17,22 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 // ── tiny .env parser ────────────────────────────────────────────────────────
-const envPath = resolve(process.cwd(), ".env.local");
-if (!existsSync(envPath)) {
-  console.error("✗ .env.local not found. Copy .env.local.example to .env.local and fill it in.");
+// Next.js itself loads .env.local, .env.production and .env, in that order of
+// precedence, so this checker looks in the same places rather than insisting on
+// one filename — otherwise a correctly configured project fails the check for
+// having put its values in a file Next reads perfectly well.
+const ENV_CANDIDATES = [".env.local", ".env.production", ".env"];
+const envPath = ENV_CANDIDATES.map((f) => resolve(process.cwd(), f)).find((p) =>
+  existsSync(p)
+);
+if (!envPath) {
+  console.error(
+    `✗ No env file found. Looked for: ${ENV_CANDIDATES.join(", ")}.\n` +
+      "  Copy .env.local.example to .env.local and fill it in."
+  );
   quit(1);
 }
+console.log(`\nReading ${envPath.split(/[\\/]/).pop()}`);
 for (const line of readFileSync(envPath, "utf8").split("\n")) {
   const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
   if (!m) continue;

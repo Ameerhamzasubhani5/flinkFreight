@@ -104,7 +104,7 @@ export async function sendContactEmail(data: ContactPayload) {
             <tr>
               <td style="padding:8px 0; color:#6b7280; font-size:13px; vertical-align:top;">Email</td>
               <td style="padding:8px 0; color:#111827; font-size:14px;">
-                <a href="mailto:${escapeHtml(data.email)}" style="color:#1d4ed8;">${escapeHtml(data.email)}</a>
+                <a href="mailto:${encodeURIComponent(data.email)}" style="color:#1d4ed8;">${escapeHtml(data.email)}</a>
               </td>
             </tr>
             ${data.phone ? `
@@ -145,7 +145,7 @@ export async function sendContactEmail(data: ContactPayload) {
           </table>
 
           <div style="margin-top:32px; padding-top:16px; border-top:1px solid #e5e7eb;">
-            <a href="mailto:${escapeHtml(data.email)}"
+            <a href="mailto:${encodeURIComponent(data.email)}"
                style="display:inline-block; background:#FFDC39; color:#222222; font-weight:700;
                       padding:10px 24px; border-radius:6px; text-decoration:none; font-size:14px;">
               Reply to ${escapeHtml(data.name)}
@@ -193,7 +193,7 @@ export async function sendCareerApplicationEmail(data: CareerApplicationPayload)
             <tr>
               <td style="padding:8px 0; color:#6b7280; font-size:13px; vertical-align:top;">Email</td>
               <td style="padding:8px 0; color:#111827; font-size:14px;">
-                <a href="mailto:${escapeHtml(data.email)}" style="color:#1d4ed8;">${escapeHtml(data.email)}</a>
+                <a href="mailto:${encodeURIComponent(data.email)}" style="color:#1d4ed8;">${escapeHtml(data.email)}</a>
               </td>
             </tr>
             ${data.phone ? `
@@ -224,7 +224,7 @@ export async function sendCareerApplicationEmail(data: CareerApplicationPayload)
           </table>
 
           <div style="margin-top:32px; padding-top:16px; border-top:1px solid #e5e7eb;">
-            <a href="mailto:${escapeHtml(data.email)}"
+            <a href="mailto:${encodeURIComponent(data.email)}"
                style="display:inline-block; background:#FFDC39; color:#222222; font-weight:700;
                       padding:10px 24px; border-radius:6px; text-decoration:none; font-size:14px;">
               Reply to ${escapeHtml(data.name)}
@@ -236,6 +236,13 @@ export async function sendCareerApplicationEmail(data: CareerApplicationPayload)
   });
 }
 
+/**
+ * HTML-escapes text. Note the limit: this is an HTML escaper, NOT a URL
+ * encoder. It leaves `?`, `=`, `%`, `,` and `;` untouched, and `&amp;` is
+ * decoded straight back to `&` by an attribute parser — so it cannot make a
+ * value safe inside a URL. Anything interpolated into an href goes through
+ * encodeURIComponent instead.
+ */
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -263,16 +270,10 @@ const COPY = {
     contactHeading: "Vielen Dank für Ihre Anfrage",
     contactIntro: (name: string) =>
       `Hallo ${name},<br><br>vielen Dank für Ihre Nachricht. Wir haben Ihre Anfrage erhalten und melden uns in der Regel innerhalb eines Werktages bei Ihnen.`,
-    contactRecap: "Ihre Angaben",
     careerSubject: "Ihre Bewerbung bei Flink Freight",
     careerHeading: "Vielen Dank für Ihre Bewerbung",
     careerIntro: (name: string) =>
       `Hallo ${name},<br><br>vielen Dank für Ihre Bewerbung. Wir haben Ihre Unterlagen erhalten und prüfen sie sorgfältig. Wenn Ihr Profil passt, melden wir uns bei Ihnen.`,
-    careerRecap: "Ihre Bewerbung",
-    labelSubject: "Betreff",
-    labelMessage: "Nachricht",
-    labelPosition: "Position",
-    labelResume: "Lebenslauf",
     noReplyNote:
       "Diese Bestätigung wurde automatisch versendet. Sie können auf diese E-Mail antworten, wenn Sie etwas ergänzen möchten.",
     signOff: "Ihr Team von Flink Freight Logistics",
@@ -282,47 +283,25 @@ const COPY = {
     contactHeading: "Thank you for your enquiry",
     contactIntro: (name: string) =>
       `Hello ${name},<br><br>thank you for your message. We have received your enquiry and normally reply within one working day.`,
-    contactRecap: "What you sent us",
     careerSubject: "Your application to Flink Freight",
     careerHeading: "Thank you for your application",
     careerIntro: (name: string) =>
       `Hello ${name},<br><br>thank you for applying. We have received your documents and will review them carefully. If your profile fits, we will be in touch.`,
-    careerRecap: "Your application",
-    labelSubject: "Subject",
-    labelMessage: "Message",
-    labelPosition: "Position",
-    labelResume: "CV",
     noReplyNote:
       "This confirmation was sent automatically. You can reply to this email if you would like to add anything.",
     signOff: "The Flink Freight Logistics team",
   },
 } as const;
 
-function recapRow(label: string, value: string): string {
-  return `
-            <tr>
-              <td style="padding:8px 0; color:#6b7280; font-size:13px; width:110px; vertical-align:top;">${escapeHtml(label)}</td>
-              <td style="padding:8px 0; color:#111827; font-size:14px; white-space:pre-wrap;">${escapeHtml(value)}</td>
-            </tr>`;
-}
 
 function acknowledgementBody(
   t: (typeof COPY)[MailLocale],
   heading: string,
-  intro: string,
-  recapTitle: string,
-  rows: string
+  intro: string
 ): string {
   return `
           <h2 style="color:#222222; font-size:18px; margin:0 0 16px;">${escapeHtml(heading)}</h2>
           <p style="color:#374151; font-size:14px; line-height:1.6; margin:0 0 24px;">${intro}</p>
-          ${
-            rows
-              ? `<p style="color:#6b7280; font-size:12px; text-transform:uppercase; letter-spacing:1px; margin:0 0 8px;">${escapeHtml(recapTitle)}</p>
-          <table style="width:100%; border-collapse:collapse; border-top:1px solid #e5e7eb;">${rows}
-          </table>`
-              : ""
-          }
           <p style="color:#374151; font-size:14px; margin:28px 0 0;">${escapeHtml(t.signOff)}</p>
           <p style="color:#9ca3af; font-size:12px; line-height:1.5; margin:24px 0 0; padding-top:16px; border-top:1px solid #e5e7eb;">
             ${escapeHtml(t.noReplyNote)}
@@ -336,10 +315,17 @@ export async function sendContactConfirmation(
 ) {
   const t = COPY[locale];
 
-  const rows =
-    (data.subject ? recapRow(t.labelSubject, data.subject) : "") +
-    recapRow(t.labelMessage, data.message);
-
+  // No recap of what the visitor wrote.
+  //
+  // The address this goes to is unverified - the only test it passed is a
+  // syntax regex - so anyone can have this message delivered to anyone. If the
+  // body echoed the submitted subject and message, that would make both public
+  // forms a relay for sending attacker-authored prose to a third party from the
+  // company's own SPF/DKIM-aligned mailbox. The recap belongs only in the team
+  // notification, whose recipients come from the environment.
+  //
+  // The greeting keeps the (length-capped) name so the mail still reads as
+  // written to a person; a name bounded at MAX_NAME cannot carry a message.
   await sendMailViaGraph({
     to: [data.email],
     // A reply should reach the team, not the unattended sending mailbox.
@@ -349,9 +335,7 @@ export async function sendContactConfirmation(
       acknowledgementBody(
         t,
         t.contactHeading,
-        t.contactIntro(escapeHtml(data.name)),
-        t.contactRecap,
-        rows
+        t.contactIntro(escapeHtml(data.name))
       )
     ),
   });
@@ -364,21 +348,18 @@ export async function sendCareerConfirmation(
 ) {
   const t = COPY[locale];
 
-  const rows =
-    (data.position ? recapRow(t.labelPosition, data.position) : "") +
-    recapRow(t.labelResume, data.resumeFileName);
-
+  // See sendContactConfirmation: nothing the applicant typed is echoed back to
+  // an unverified address, so this cannot be used to deliver attacker-authored
+  // content to a third party under the company's domain.
   await sendMailViaGraph({
     to: [data.email],
-    replyTo: (CAREER_TO[0] ?? TO[0]),
+    replyTo: CAREER_TO[0] ?? TO[0],
     subject: t.careerSubject,
     html: shell(
       acknowledgementBody(
         t,
         t.careerHeading,
-        t.careerIntro(escapeHtml(data.name)),
-        t.careerRecap,
-        rows
+        t.careerIntro(escapeHtml(data.name))
       )
     ),
   });

@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { preflight, withCors } from "@/lib/cors";
 import { sendContactEmail, sendContactConfirmation, type MailLocale } from "@/lib/email";
 import { uploadToOneDrive, isGraphConfigured } from "@/lib/msGraph";
-import { MAX_UPLOAD_BYTES, IMAGE_MIME_TYPES, CONTACT_FOLDER } from "@/lib/uploads";
+import {
+  MAX_UPLOAD_BYTES,
+  IMAGE_MIME_TYPES,
+  CONTACT_FOLDER,
+  imageFormat,
+  storedUploadName,
+  tooLongField,
+} from "@/lib/uploads";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { isHoneypotFilled, HONEYPOT_FIELD } from "@/lib/honeypot";
 
@@ -68,7 +75,21 @@ export async function POST(request: Request) {
       ), request);
     }
 
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    // Allowlist, not "anything except whitespace and @". The old pattern
+    // accepted `a?cc=attacker@evil.example&body=...`, which then survived
+    // HTML escaping into the mailto: href of the staff notification and
+    // pre-filled a reply composer with attacker-chosen recipients.
+    const overLong = tooLongField({ name, email, phone, subject, message });
+    if (overLong) {
+      return withCors(NextResponse.json(
+        { error: `That ${overLong.field} is too long (maximum ${overLong.limit} characters).` },
+        { status: 400 }
+      ), request);
+    }
+
+    const emailOk = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(
+      email
+    );
     if (!emailOk) {
       return withCors(NextResponse.json(
         { error: "Please provide a valid email address." },
@@ -103,8 +124,24 @@ export async function POST(request: Request) {
       } else {
         try {
           const buffer = Buffer.from(await image.arrayBuffer());
-          const uploaded = await uploadToOneDrive(buffer, image.name, CONTACT_FOLDER);
-          imageUrl = uploaded.webUrl;
+
+          // See the career route: the declared MIME type is a claim, the bytes
+          // are the fact. A photo that is not a photo is dropped, but the
+          // enquiry still goes through - the message matters more than the
+          // attachment.
+          const format = imageFormat(buffer);
+          if (!format) {
+            console.warn(
+              `[contact] Photo dropped: declared "${image.type}" but the content is not a JPEG, PNG or WEBP.`
+            );
+          } else {
+            const uploaded = await uploadToOneDrive(
+              buffer,
+              storedUploadName(image.name, format),
+              CONTACT_FOLDER
+            );
+            imageUrl = uploaded.webUrl;
+          }
         } catch (err) {
           console.error("[contact] OneDrive upload failed:", err);
         }

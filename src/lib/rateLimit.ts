@@ -72,16 +72,42 @@ export function rateLimit(scope: string, ip: string): RateLimitResult {
 /**
  * Best-effort client IP.
  *
- * Behind nginx (the production setup) X-Forwarded-For is set by our own proxy,
- * so its left-most entry is the real client. Direct traffic has no such header
- * and falls back to a single shared bucket, which is the safe direction to err:
- * unidentified callers share one allowance rather than each getting a fresh one.
+ * Header preference matters, and this used to have it backwards.
+ *
+ * Nginx sets the two headers with different semantics:
+ *
+ *   proxy_set_header X-Real-IP       $remote_addr;              <- OVERWRITES
+ *   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; <- APPENDS
+ *
+ * `$proxy_add_x_forwarded_for` appends the peer address to whatever the client
+ * already sent, so a caller who sends `X-Forwarded-For: anything` produces
+ * `anything, <real ip>` and the LEFT-MOST entry is the caller's own string.
+ * Reading that first let anyone mint a fresh rate-limit bucket per request
+ * simply by varying the header, which defeated the only stateful abuse control
+ * on both public endpoints.
+ *
+ * X-Real-IP is overwritten by the proxy, so a caller cannot influence it, and
+ * it is the only header trusted here. Both Nginx (per the deployment guide) and
+ * the hosted platforms this app runs on set it from the real peer address.
+ *
+ * X-Forwarded-For is NOT consulted, not even from the right. There is no
+ * position in that list that is guaranteed not to be the caller's: reading the
+ * left-most takes the value they prepended, and reading the right-most takes
+ * their value too whenever nothing appended to it — which is exactly what the
+ * first attempt at this fix got wrong, and what the regression test below
+ * covers. Without a known, configured hop count the header carries no
+ * trustworthy entry at all.
+ *
+ * With neither header present every caller shares one bucket. That is coarse,
+ * but it is the safe direction to err: a shared allowance cannot be reset at
+ * will, whereas a spoofable key means no limit whatsoever.
+ *
+ * Decided in the application rather than delegated to the deployment on
+ * purpose — the audit could not confirm which directive the live Nginx loads,
+ * and the app should not be one config typo away from having no rate limit.
  */
 export function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  return request.headers.get("x-real-ip")?.trim() || "unknown";
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  return "unknown";
 }
